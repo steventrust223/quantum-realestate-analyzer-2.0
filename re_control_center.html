@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      font-size: 13px;
+      padding: 16px;
+      background: #f5f5f5;
+      color: #333;
+    }
+
+    h1 {
+      font-size: 18px;
+      font-weight: 600;
+      color: #1a237e;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    h2 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1a237e;
+      margin: 20px 0 12px 0;
+      padding-bottom: 6px;
+      border-bottom: 2px solid #e0e0e0;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .metric-card {
+      background: white;
+      padding: 12px;
+      border-radius: 6px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .metric-label {
+      font-size: 11px;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+
+    .metric-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: #1a237e;
+    }
+
+    .metric-value.hot {
+      color: #4caf50;
+    }
+
+    .metric-value.solid {
+      color: #2196f3;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 10px 16px;
+      margin: 6px 0;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn-primary {
+      background: #1a237e;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #0d1656;
+      box-shadow: 0 2px 8px rgba(26,35,126,0.3);
+    }
+
+    .btn-secondary {
+      background: #2196f3;
+      color: white;
+    }
+
+    .btn-secondary:hover {
+      background: #1976d2;
+      box-shadow: 0 2px 8px rgba(33,150,243,0.3);
+    }
+
+    .btn-success {
+      background: #4caf50;
+      color: white;
+    }
+
+    .btn-success:hover {
+      background: #388e3c;
+    }
+
+    .action-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .action-item {
+      background: white;
+      padding: 10px;
+      margin-bottom: 8px;
+      border-radius: 6px;
+      border-left: 4px solid #ff9800;
+      font-size: 12px;
+    }
+
+    .action-item.high {
+      border-left-color: #f44336;
+    }
+
+    .action-item.medium {
+      border-left-color: #ff9800;
+    }
+
+    .action-item .priority {
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+
+    .log-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .log-item {
+      background: white;
+      padding: 8px;
+      margin-bottom: 6px;
+      border-radius: 4px;
+      font-size: 11px;
+      border-left: 3px solid #e0e0e0;
+    }
+
+    .log-item.SUCCESS {
+      border-left-color: #4caf50;
+    }
+
+    .log-item.ERROR {
+      border-left-color: #f44336;
+    }
+
+    .log-item.WARNING {
+      border-left-color: #ff9800;
+    }
+
+    .log-item.INFO {
+      border-left-color: #2196f3;
+    }
+
+    .log-meta {
+      color: #999;
+      font-size: 10px;
+      margin-bottom: 2px;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 20px;
+      color: #999;
+    }
+
+    .divider {
+      height: 1px;
+      background: #e0e0e0;
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>🏡 Control Center</h1>
+
+  <div id="content">
+    <div class="loading">Loading...</div>
+  </div>
+
+  <script>
+    // Load data on page load
+    google.script.run
+      .withSuccessHandler(renderControlCenter)
+      .withFailureHandler(showError)
+      .RE_getControlCenterData();
+
+    function renderControlCenter(data) {
+      const html = `
+        <div class="metrics">
+          <div class="metric-card">
+            <div class="metric-label">Hot Deals</div>
+            <div class="metric-value hot">${data.summary.hotDeals}</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Solid Deals</div>
+            <div class="metric-value solid">${data.summary.solidDeals}</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Total Properties</div>
+            <div class="metric-value">${data.summary.totalProperties}</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Under Contract</div>
+            <div class="metric-value">${data.summary.underContract}</div>
+          </div>
+        </div>
+
+        <h2>Quick Actions</h2>
+        <button class="btn btn-primary" onclick="runSync()">🔄 Run Import → Master Sync</button>
+        <button class="btn btn-primary" onclick="runAnalysis()">📊 Run Full Analysis</button>
+        <button class="btn btn-secondary" onclick="rebuildVerdict()">🏅 Rebuild Verdict</button>
+        <button class="btn btn-success" onclick="openDealReview()">📂 Review Top Deals</button>
+
+        <div class="divider"></div>
+
+        <h2>Action Items (${data.actionItems.length})</h2>
+        ${renderActionItems(data.actionItems)}
+
+        <div class="divider"></div>
+
+        <h2>Recent Activity</h2>
+        ${renderRecentLogs(data.recentLogs)}
+      `;
+
+      document.getElementById('content').innerHTML = html;
+    }
+
+    function renderActionItems(items) {
+      if (items.length === 0) {
+        return '<p style="color: #999; font-size: 12px;">No action items. Great job!</p>';
+      }
+
+      const itemsHtml = items.map(item => `
+        <li class="action-item ${item.priority.toLowerCase()}">
+          <div class="priority">${item.priority}: ${item.type}</div>
+          <div>${item.address}</div>
+          <div style="color: #666; font-size: 11px; margin-top: 2px;">${item.reason}</div>
+        </li>
+      `).join('');
+
+      return `<ul class="action-list">${itemsHtml}</ul>`;
+    }
+
+    function renderRecentLogs(logs) {
+      if (logs.length === 0) {
+        return '<p style="color: #999; font-size: 12px;">No recent activity.</p>';
+      }
+
+      const logsHtml = logs.map(log => `
+        <li class="log-item ${log.eventType}">
+          <div class="log-meta">${formatDate(log.timestamp)} - ${log.eventType}</div>
+          <div><strong>${log.module}</strong>: ${log.message}</div>
+        </li>
+      `).join('');
+
+      return `<ul class="log-list">${logsHtml}</ul>`;
+    }
+
+    function formatDate(date) {
+      if (!date) return '';
+      const d = new Date(date);
+      return d.toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+
+    function showError(error) {
+      document.getElementById('content').innerHTML = `
+        <div style="color: #f44336; padding: 20px;">
+          <strong>Error:</strong> ${error.message}
+        </div>
+      `;
+    }
+
+    // Action handlers
+    function runSync() {
+      if (confirm('Run Import → Master Sync?\n\nThis will import all new leads from LEADS_* sheets.')) {
+        google.script.run
+          .withSuccessHandler(() => {
+            alert('Import completed! Refresh the control center to see updates.');
+            location.reload();
+          })
+          .RE_runFullSync();
+      }
+    }
+
+    function runAnalysis() {
+      if (confirm('Run Full Analysis?\n\nThis will analyze all properties (MAO, risk, classification, etc.)')) {
+        google.script.run
+          .withSuccessHandler(() => {
+            alert('Analysis completed! Refresh the control center to see updates.');
+            location.reload();
+          })
+          .RE_runFullAnalysis();
+      }
+    }
+
+    function rebuildVerdict() {
+      google.script.run
+        .withSuccessHandler(() => {
+          alert('Verdict rebuilt successfully!');
+          location.reload();
+        })
+        .RE_rebuildVerdict();
+    }
+
+    function openDealReview() {
+      google.script.run.RE_showDealReview();
+    }
+  </script>
+</body>
+</html>

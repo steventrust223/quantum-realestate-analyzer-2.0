@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      font-size: 13px;
+      padding: 20px;
+      background: #f5f5f5;
+      color: #333;
+    }
+
+    h1 {
+      font-size: 20px;
+      font-weight: 600;
+      color: #1a237e;
+      margin-bottom: 20px;
+    }
+
+    .deals-list {
+      max-height: 500px;
+      overflow-y: auto;
+    }
+
+    .deal-card {
+      background: white;
+      padding: 16px;
+      margin-bottom: 12px;
+      border-radius: 6px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      border-left: 4px solid #ccc;
+    }
+
+    .deal-card.HOT {
+      border-left-color: #4caf50;
+    }
+
+    .deal-card.SOLID {
+      border-left-color: #2196f3;
+    }
+
+    .deal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      margin-bottom: 12px;
+    }
+
+    .deal-address {
+      font-size: 15px;
+      font-weight: 600;
+      color: #1a237e;
+    }
+
+    .deal-class {
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .deal-class.HOT {
+      background: #e8f5e9;
+      color: #2e7d32;
+    }
+
+    .deal-class.SOLID {
+      background: #e3f2fd;
+      color: #1565c0;
+    }
+
+    .deal-metrics {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .metric {
+      background: #f5f5f5;
+      padding: 8px;
+      border-radius: 4px;
+    }
+
+    .metric-label {
+      font-size: 10px;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 2px;
+    }
+
+    .metric-value {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1a237e;
+    }
+
+    .metric-value.positive {
+      color: #4caf50;
+    }
+
+    .deal-info {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      font-size: 12px;
+      margin-bottom: 12px;
+    }
+
+    .info-item {
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .info-label {
+      color: #666;
+    }
+
+    .info-value {
+      font-weight: 500;
+    }
+
+    .deal-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn {
+      padding: 8px 12px;
+      border: none;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-small {
+      flex: 1;
+    }
+
+    .btn-primary {
+      background: #1a237e;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #0d1656;
+    }
+
+    .btn-secondary {
+      background: #2196f3;
+      color: white;
+    }
+
+    .btn-secondary:hover {
+      background: #1976d2;
+    }
+
+    .btn-success {
+      background: #4caf50;
+      color: white;
+    }
+
+    .btn-success:hover {
+      background: #388e3c;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #999;
+    }
+
+    .no-deals {
+      text-align: center;
+      padding: 40px;
+      color: #999;
+    }
+
+    /* Modal styles */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+    }
+
+    .modal.active {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-content {
+      background: white;
+      padding: 24px;
+      border-radius: 8px;
+      max-width: 400px;
+      width: 90%;
+    }
+
+    .modal-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #1a237e;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      font-weight: 500;
+      margin-bottom: 4px;
+      color: #555;
+      font-size: 12px;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 13px;
+      font-family: inherit;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .btn-block {
+      flex: 1;
+    }
+  </style>
+</head>
+<body>
+  <h1>📂 Deal Review Panel</h1>
+
+  <div id="content">
+    <div class="loading">Loading deals...</div>
+  </div>
+
+  <!-- Offer Modal -->
+  <div id="offerModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-title">Create Offer</div>
+      <form id="offerForm">
+        <input type="hidden" id="modal_propertyId" name="propertyId">
+
+        <div class="form-group">
+          <label for="offerAmount">Offer Amount *</label>
+          <input type="number" id="offerAmount" name="offerAmount" required min="0">
+        </div>
+
+        <div class="form-group">
+          <label for="offerType">Offer Type</label>
+          <select id="offerType" name="offerType">
+            <option value="Cash">Cash</option>
+            <option value="Financing">Financing</option>
+            <option value="Sub2">Subject To</option>
+            <option value="Seller Finance">Seller Finance</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="assignmentFee">Assignment Fee</label>
+          <input type="number" id="assignmentFee" name="assignmentFee" value="10000" min="0">
+        </div>
+
+        <div class="form-group">
+          <label for="offerNotes">Notes</label>
+          <textarea id="offerNotes" name="notes" rows="3"></textarea>
+        </div>
+
+        <div class="modal-actions">
+          <button type="submit" class="btn btn-primary btn-block">Create Offer</button>
+          <button type="button" class="btn btn-secondary btn-block" onclick="closeModal()">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    let currentDeals = [];
+
+    // Load deals on page load
+    google.script.run
+      .withSuccessHandler(renderDeals)
+      .withFailureHandler(showError)
+      .RE_getDealReviewData();
+
+    function renderDeals(data) {
+      currentDeals = data.deals;
+
+      if (data.deals.length === 0) {
+        document.getElementById('content').innerHTML = `
+          <div class="no-deals">
+            <p>No deals to review yet.</p>
+            <p style="margin-top: 8px; font-size: 12px;">Run "Full Analysis" to analyze properties.</p>
+          </div>
+        `;
+        return;
+      }
+
+      const dealsHtml = data.deals.map(deal => `
+        <div class="deal-card ${deal.dealClass}">
+          <div class="deal-header">
+            <div>
+              <div class="deal-address">${deal.address}</div>
+              <div style="font-size: 12px; color: #666; margin-top: 2px;">
+                ${deal.city}, ${deal.state}
+              </div>
+            </div>
+            <span class="deal-class ${deal.dealClass}">${deal.dealClass}</span>
+          </div>
+
+          <div class="deal-metrics">
+            <div class="metric">
+              <div class="metric-label">ARV</div>
+              <div class="metric-value">${formatCurrency(deal.arv)}</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Asking</div>
+              <div class="metric-value">${formatCurrency(deal.askingPrice)}</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Profit</div>
+              <div class="metric-value positive">${formatCurrency(deal.profitPotential)}</div>
+            </div>
+          </div>
+
+          <div class="deal-info">
+            <div class="info-item">
+              <span class="info-label">MAO:</span>
+              <span class="info-value">${formatCurrency(deal.mao)}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Suggested Offer:</span>
+              <span class="info-value">${formatCurrency(deal.suggestedOffer)}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Margin:</span>
+              <span class="info-value">${deal.profitMargin.toFixed(1)}%</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Strategy:</span>
+              <span class="info-value">${deal.exitStrategy || 'TBD'}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Seller:</span>
+              <span class="info-value">${deal.sellerName || 'Unknown'}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Phone:</span>
+              <span class="info-value">${deal.sellerPhone || 'N/A'}</span>
+            </div>
+          </div>
+
+          <div class="deal-actions">
+            <button class="btn btn-primary btn-small" onclick="createOffer('${deal.propertyId}', ${deal.suggestedOffer})">
+              💰 Make Offer
+            </button>
+            <button class="btn btn-success btn-small" onclick="sendToBuyers('${deal.propertyId}')">
+              📤 Send to Buyers
+            </button>
+            <button class="btn btn-secondary btn-small" onclick="markUnderContract('${deal.propertyId}')">
+              ✅ Under Contract
+            </button>
+          </div>
+        </div>
+      `).join('');
+
+      document.getElementById('content').innerHTML = `
+        <div style="margin-bottom: 16px; color: #666; font-size: 12px;">
+          Showing top ${data.deals.length} deals
+        </div>
+        <div class="deals-list">${dealsHtml}</div>
+      `;
+    }
+
+    function showError(error) {
+      document.getElementById('content').innerHTML = `
+        <div style="color: #f44336; padding: 20px; text-align: center;">
+          <strong>Error:</strong> ${error.message}
+        </div>
+      `;
+    }
+
+    function formatCurrency(amount) {
+      if (!amount && amount !== 0) return 'N/A';
+      return '$' + Number(amount).toLocaleString('en-US', { maximumFractionDigits: 0 });
+    }
+
+    function createOffer(propertyId, suggestedOffer) {
+      document.getElementById('modal_propertyId').value = propertyId;
+      document.getElementById('offerAmount').value = suggestedOffer || '';
+      document.getElementById('offerModal').classList.add('active');
+    }
+
+    function closeModal() {
+      document.getElementById('offerModal').classList.remove('active');
+      document.getElementById('offerForm').reset();
+    }
+
+    document.getElementById('offerForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      const offerData = {
+        propertyId: document.getElementById('modal_propertyId').value,
+        offerAmount: document.getElementById('offerAmount').value,
+        offerType: document.getElementById('offerType').value,
+        assignmentFee: document.getElementById('assignmentFee').value,
+        notes: document.getElementById('offerNotes').value
+      };
+
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.success) {
+            alert(result.message);
+            closeModal();
+          } else {
+            alert('Error: ' + result.message);
+          }
+        })
+        .RE_createOfferFromUi(offerData);
+    });
+
+    function sendToBuyers(propertyId) {
+      if (confirm('Send this property to all matched buyers?')) {
+        google.script.run
+          .withSuccessHandler(function(result) {
+            alert(result.message);
+          })
+          .RE_sendToBuyerMatchFromUi(propertyId);
+      }
+    }
+
+    function markUnderContract(propertyId) {
+      if (confirm('Mark this property as Under Contract?')) {
+        google.script.run
+          .withSuccessHandler(function() {
+            alert('Property marked as Under Contract!');
+          })
+          .RE_updatePropertyStatus(propertyId, 'Under Contract');
+      }
+    }
+
+    // Close modal on background click
+    document.getElementById('offerModal').addEventListener('click', function(e) {
+      if (e.target === this) {
+        closeModal();
+      }
+    });
+  </script>
+</body>
+</html>

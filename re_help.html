@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      font-size: 13px;
+      padding: 20px;
+      background: #f5f5f5;
+      color: #333;
+      line-height: 1.6;
+    }
+
+    h1 {
+      font-size: 22px;
+      font-weight: 600;
+      color: #1a237e;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 24px;
+      font-size: 14px;
+    }
+
+    .help-container {
+      max-height: 500px;
+      overflow-y: auto;
+    }
+
+    .section {
+      background: white;
+      padding: 16px;
+      margin-bottom: 16px;
+      border-radius: 6px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    h2 {
+      font-size: 16px;
+      font-weight: 600;
+      color: #1a237e;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    h3 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1a237e;
+      margin: 16px 0 8px 0;
+    }
+
+    p {
+      margin-bottom: 12px;
+      color: #555;
+    }
+
+    .steps {
+      list-style: none;
+      counter-reset: step-counter;
+      padding-left: 0;
+    }
+
+    .steps li {
+      counter-increment: step-counter;
+      margin-bottom: 12px;
+      padding-left: 30px;
+      position: relative;
+    }
+
+    .steps li::before {
+      content: counter(step-counter);
+      position: absolute;
+      left: 0;
+      top: 0;
+      background: #1a237e;
+      color: white;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .feature-list {
+      list-style: none;
+      padding-left: 0;
+    }
+
+    .feature-list li {
+      padding: 8px 0;
+      padding-left: 24px;
+      position: relative;
+    }
+
+    .feature-list li::before {
+      content: '✓';
+      position: absolute;
+      left: 0;
+      color: #4caf50;
+      font-weight: bold;
+      font-size: 16px;
+    }
+
+    .faq-item {
+      margin-bottom: 16px;
+    }
+
+    .faq-question {
+      font-weight: 600;
+      color: #1a237e;
+      margin-bottom: 4px;
+    }
+
+    .faq-answer {
+      color: #555;
+      padding-left: 12px;
+      border-left: 3px solid #e0e0e0;
+    }
+
+    .tip-box {
+      background: #e3f2fd;
+      border-left: 4px solid #2196f3;
+      padding: 12px;
+      margin: 12px 0;
+      border-radius: 4px;
+    }
+
+    .tip-title {
+      font-weight: 600;
+      color: #1565c0;
+      margin-bottom: 4px;
+    }
+
+    .warning-box {
+      background: #fff3e0;
+      border-left: 4px solid #ff9800;
+      padding: 12px;
+      margin: 12px 0;
+      border-radius: 4px;
+    }
+
+    .warning-title {
+      font-weight: 600;
+      color: #e65100;
+      margin-bottom: 4px;
+    }
+
+    .code {
+      background: #f5f5f5;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+    }
+
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: #1a237e;
+      color: white;
+      width: 100%;
+      margin-top: 16px;
+    }
+
+    .btn:hover {
+      background: #0d1656;
+    }
+  </style>
+</head>
+<body>
+  <h1>📚 Quantum Real Estate Analyzer</h1>
+  <div class="subtitle">Ultimate Edition v2.0 - Help & Overview</div>
+
+  <div class="help-container">
+    <!-- Getting Started -->
+    <div class="section">
+      <h2>🚀 Getting Started</h2>
+      <p>Follow these steps to start analyzing real estate deals:</p>
+
+      <ol class="steps">
+        <li><strong>Setup Your Workbook:</strong> Click <span class="code">Setup / Refresh Structure</span> from the menu to create all necessary sheets.</li>
+
+        <li><strong>Add Leads:</strong> Add your property leads to one of the LEADS_* sheets:
+          <ul style="margin-top: 8px; margin-left: 20px;">
+            <li><span class="code">LEADS_WEB</span> - Web form & ad leads</li>
+            <li><span class="code">LEADS_SCRAPED</span> - List & scraped data</li>
+            <li><span class="code">LEADS_DIRECT</span> - Manual entry (or use Lead Intake tool)</li>
+          </ul>
+        </li>
+
+        <li><strong>Import to Master:</strong> Click <span class="code">Run Import → Master Sync</span> to import leads into MASTER_PROPERTIES.</li>
+
+        <li><strong>Run Analysis:</strong> Click <span class="code">Run Full Analysis</span> to calculate MAO, classify deals, and recommend strategies.</li>
+
+        <li><strong>Review Deals:</strong> Use the <span class="code">Deal Review Panel</span> or <span class="code">Control Center</span> to see your hot deals and take action.</li>
+      </ol>
+
+      <div class="tip-box">
+        <div class="tip-title">💡 Pro Tip</div>
+        Use the Control Center (menu → Control Center) as your main dashboard. It shows key metrics and recent activity at a glance.
+      </div>
+    </div>
+
+    <!-- Key Features -->
+    <div class="section">
+      <h2>⚡ Key Features</h2>
+
+      <h3>MAO Calculation</h3>
+      <p>Maximum Allowable Offer is calculated using:</p>
+      <ul class="feature-list">
+        <li>ARV (After Repair Value) estimation</li>
+        <li>Repair costs (Light vs Full rehab)</li>
+        <li>Holding costs & closing costs</li>
+        <li>Target profit & assignment fees</li>
+        <li>Strategy-specific formulas (Wholesale, Sub2, Wrap)</li>
+      </ul>
+
+      <h3>Deal Classification</h3>
+      <p>Properties are automatically classified into:</p>
+      <ul class="feature-list">
+        <li><strong>HOT DEAL:</strong> High profit, high margin, low risk</li>
+        <li><strong>SOLID:</strong> Good profit, acceptable margin & risk</li>
+        <li><strong>PORTFOLIO:</strong> Lower profit but stable/long-term potential</li>
+        <li><strong>PASS:</strong> Doesn't meet minimum criteria</li>
+      </ul>
+
+      <h3>Exit Strategy Recommendations</h3>
+      <p>System recommends the best exit strategy for each property:</p>
+      <ul class="feature-list">
+        <li><strong>Wholesale:</strong> Quick flip with assignment fee</li>
+        <li><strong>Wholetail:</strong> Light repairs, fast sale</li>
+        <li><strong>Sub2:</strong> Subject-to existing financing</li>
+        <li><strong>Wraparound:</strong> Seller financing structure</li>
+        <li><strong>STR/MTR/LTR:</strong> Short/mid/long-term rentals</li>
+      </ul>
+
+      <h3>Buyer Matching</h3>
+      <p>Automatically matches properties to buyers based on:</p>
+      <ul class="feature-list">
+        <li>Geographic preferences (ZIP, City)</li>
+        <li>Price range</li>
+        <li>Strategy preference</li>
+        <li>Property type & repair tolerance</li>
+      </ul>
+    </div>
+
+    <!-- FAQ -->
+    <div class="section">
+      <h2>❓ Frequently Asked Questions</h2>
+
+      <div class="faq-item">
+        <div class="faq-question">Q: How accurate are the ARV estimates?</div>
+        <div class="faq-answer">
+          A: Currently, ARV is estimated at 115% of asking price as a conservative heuristic. For production use, integrate with Zillow API or use comp data for more accurate valuations.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question">Q: Can I customize the thresholds and formulas?</div>
+        <div class="faq-answer">
+          A: Yes! Go to <span class="code">Settings</span> to adjust MAO percentages, profit targets, risk thresholds, and more. All calculations use these settings.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question">Q: How do I integrate with my CRM?</div>
+        <div class="faq-answer">
+          A: The system includes stub functions for CRM integration. Look for functions marked "STUB" in the code (e.g., RE_sendPropertyToBuyer). You can wire these to CompanyHub, SMS-iT, or other tools via their APIs.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question">Q: What's the difference between Sub2 and Wraparound?</div>
+        <div class="faq-answer">
+          A: <strong>Sub2 (Subject To):</strong> You take ownership subject to existing financing. Best for low-equity deals with good cash flow.
+          <br><strong>Wraparound:</strong> Seller carries financing while underlying loan stays in place. You make payments to seller, seller pays underlying loan. Good for moderate-equity deals.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question">Q: Can I delete leads or properties?</div>
+        <div class="faq-answer">
+          A: Yes, but be careful! If you delete from LEADS_* sheets, it won't affect MASTER_PROPERTIES (already imported). If you delete from MASTER_PROPERTIES, you'll lose all analysis data. Instead, consider changing the Status to "Dead" to keep history.
+        </div>
+      </div>
+    </div>
+
+    <!-- Sheet Guide -->
+    <div class="section">
+      <h2>📊 Sheet Guide</h2>
+
+      <h3>🟠 Import / Raw Leads (Orange tabs)</h3>
+      <p><strong>LEADS_WEB, LEADS_SCRAPED, LEADS_DIRECT:</strong> Raw lead data before normalization.</p>
+
+      <h3>🔵 Core Analysis (Blue tabs)</h3>
+      <p><strong>MASTER_PROPERTIES:</strong> Main table with all normalized properties and analysis results.</p>
+      <p><strong>MAO_ENGINE:</strong> Detailed MAO calculations for each property.</p>
+      <p><strong>DEAL_CLASSIFIER:</strong> Deal classification logic and results.</p>
+      <p><strong>EXIT_STRATEGY:</strong> Recommended exit strategies with reasoning.</p>
+      <p><strong>BUYER_MATCH:</strong> Property-to-buyer matching results.</p>
+
+      <h3>🟢 Market & Velocity (Green tabs)</h3>
+      <p><strong>MARKET_DATA:</strong> ZIP-level market statistics (DOM, sales volume, price ranges).</p>
+      <p><strong>SALES_VELOCITY:</strong> Property-level velocity scores and tiers.</p>
+      <p><strong>MARKET_VOLUME_SCORE:</strong> Market "heat" and liquidity ratings.</p>
+
+      <h3>🟣 Supporting (Purple tabs)</h3>
+      <p><strong>LEADS_TRACKER:</strong> Contact tracking, stages, and follow-up actions.</p>
+      <p><strong>BUYERS_DB:</strong> Buyer database with preferences and criteria.</p>
+      <p><strong>OFFERS_DISPO:</strong> Offer tracking and disposition management.</p>
+
+      <h3>⚫ System (Grey tabs)</h3>
+      <p><strong>SETTINGS:</strong> System configuration and thresholds.</p>
+      <p><strong>SYSTEM_LOG:</strong> Event logging for troubleshooting.</p>
+      <p><strong>DASHBOARD_ANALYTICS:</strong> KPIs and metrics summary.</p>
+    </div>
+
+    <!-- Tips & Best Practices -->
+    <div class="section">
+      <h2>💎 Tips & Best Practices</h2>
+
+      <ul class="feature-list">
+        <li><strong>Regular Analysis:</strong> Run Full Analysis after importing new leads to keep data current.</li>
+        <li><strong>Update Market Data:</strong> Periodically update MARKET_DATA with current ZIP-level stats for better velocity scoring.</li>
+        <li><strong>Maintain Buyer Database:</strong> Keep BUYERS_DB up-to-date with active buyers and their preferences.</li>
+        <li><strong>Use Lead Tracker:</strong> Track all contact attempts and outcomes in LEADS_TRACKER for better follow-up.</li>
+        <li><strong>Review Settings:</strong> Adjust settings based on your market and deal criteria.</li>
+        <li><strong>Check System Log:</strong> If something doesn't work as expected, check SYSTEM_LOG for errors.</li>
+      </ul>
+
+      <div class="warning-box">
+        <div class="warning-title">⚠️ Important Notes</div>
+        <ul style="margin-top: 8px; margin-left: 20px;">
+          <li>Always backup your spreadsheet before running setup/analysis.</li>
+          <li>ARV estimates are conservative - verify with actual comps.</li>
+          <li>MAO formulas are guidelines - adjust based on your experience.</li>
+          <li>CRM integrations are stubs - customize for your tools.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Support -->
+    <div class="section">
+      <h2>🆘 Need More Help?</h2>
+      <p>For additional support or to report issues:</p>
+      <ul class="feature-list">
+        <li>Check the SYSTEM_LOG sheet for error details</li>
+        <li>Review the code comments in .gs files for technical details</li>
+        <li>Adjust SETTINGS to fine-tune calculations for your market</li>
+        <li>Use sample data to test workflows before processing real leads</li>
+      </ul>
+    </div>
+  </div>
+
+  <button class="btn" onclick="google.script.host.close()">Close</button>
+</body>
+</html>

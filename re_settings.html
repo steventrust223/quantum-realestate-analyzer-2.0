@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      font-size: 13px;
+      padding: 20px;
+      background: #f5f5f5;
+      color: #333;
+    }
+
+    h1 {
+      font-size: 20px;
+      font-weight: 600;
+      color: #1a237e;
+      margin-bottom: 20px;
+    }
+
+    .category {
+      background: white;
+      padding: 16px;
+      margin-bottom: 16px;
+      border-radius: 6px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .category-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: #1a237e;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #e0e0e0;
+    }
+
+    .setting-item {
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    .setting-item:last-child {
+      margin-bottom: 0;
+      padding-bottom: 0;
+      border-bottom: none;
+    }
+
+    .setting-label {
+      font-weight: 500;
+      margin-bottom: 4px;
+      color: #333;
+      font-size: 13px;
+    }
+
+    .setting-description {
+      font-size: 11px;
+      color: #999;
+      margin-bottom: 6px;
+    }
+
+    .setting-input {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    input[type="number"],
+    input[type="text"] {
+      flex: 1;
+      padding: 6px 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 13px;
+      font-family: inherit;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #2196f3;
+    }
+
+    .input-suffix {
+      color: #666;
+      font-size: 12px;
+      min-width: 30px;
+    }
+
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: #1a237e;
+      color: white;
+      width: 100%;
+    }
+
+    .btn-primary:hover {
+      background: #0d1656;
+      box-shadow: 0 2px 8px rgba(26,35,126,0.3);
+    }
+
+    .btn-primary:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+
+    .btn-secondary {
+      background: #f5f5f5;
+      color: #333;
+      border: 1px solid #ddd;
+      width: 100%;
+    }
+
+    .btn-secondary:hover {
+      background: #e0e0e0;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 24px;
+      position: sticky;
+      bottom: 0;
+      background: #f5f5f5;
+      padding: 16px 0;
+    }
+
+    .settings-container {
+      max-height: 450px;
+      overflow-y: auto;
+      margin-bottom: 16px;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #999;
+    }
+
+    .success-message {
+      background: #e8f5e9;
+      color: #2e7d32;
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+      border-left: 4px solid #4caf50;
+    }
+
+    .error-message {
+      background: #ffebee;
+      color: #c62828;
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+      border-left: 4px solid #f44336;
+    }
+  </style>
+</head>
+<body>
+  <h1>⚙️ System Settings</h1>
+
+  <div id="message"></div>
+
+  <div id="content">
+    <div class="loading">Loading settings...</div>
+  </div>
+
+  <script>
+    let settingsData = {};
+
+    // Load settings on page load
+    google.script.run
+      .withSuccessHandler(renderSettings)
+      .withFailureHandler(showError)
+      .RE_getSettingsData();
+
+    function renderSettings(data) {
+      settingsData = data.grouped;
+
+      const categories = Object.keys(data.grouped).sort();
+
+      const categoriesHtml = categories.map(category => {
+        const settings = data.grouped[category];
+
+        const settingsHtml = settings.map(setting => {
+          const key = setting.key;
+          const value = setting.value;
+          const description = setting.description;
+
+          // Determine suffix based on key
+          let suffix = '';
+          if (key.includes('Percent')) suffix = '%';
+          else if (key.includes('threshold') || key.includes('Profit') || key.includes('Fee') || key.includes('Cost')) suffix = '$';
+          else if (key.includes('Months') || key.includes('Days')) suffix = '';
+
+          return `
+            <div class="setting-item">
+              <div class="setting-label">${formatKey(key)}</div>
+              <div class="setting-description">${description}</div>
+              <div class="setting-input">
+                <input
+                  type="number"
+                  id="setting_${key}"
+                  name="${key}"
+                  value="${value}"
+                  step="any"
+                  data-original="${value}"
+                >
+                ${suffix ? `<span class="input-suffix">${suffix}</span>` : ''}
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        return `
+          <div class="category">
+            <div class="category-title">${category}</div>
+            ${settingsHtml}
+          </div>
+        `;
+      }).join('');
+
+      document.getElementById('content').innerHTML = `
+        <div class="settings-container">
+          ${categoriesHtml}
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="saveSettings()">💾 Save Settings</button>
+          <button class="btn btn-secondary" onclick="google.script.host.close()">Cancel</button>
+        </div>
+      `;
+    }
+
+    function formatKey(key) {
+      // Convert "mao.wholesale.maxOfferPercent" to "Max Offer Percent"
+      const parts = key.split('.');
+      const lastPart = parts[parts.length - 1];
+
+      return lastPart
+        .replace(/([A-Z])/g, ' $1')
+        .replace(/^./, str => str.toUpperCase())
+        .trim();
+    }
+
+    function showError(error) {
+      document.getElementById('content').innerHTML = `
+        <div style="color: #f44336; padding: 20px; text-align: center;">
+          <strong>Error:</strong> ${error.message}
+        </div>
+      `;
+    }
+
+    function saveSettings() {
+      const inputs = document.querySelectorAll('input[type="number"]');
+      const settings = {};
+
+      inputs.forEach(input => {
+        const key = input.name;
+        const value = input.value;
+        settings[key] = value;
+      });
+
+      // Show loading
+      document.querySelector('.btn-primary').disabled = true;
+      document.querySelector('.btn-primary').textContent = 'Saving...';
+
+      // Save via Apps Script
+      google.script.run
+        .withSuccessHandler(handleSaveSuccess)
+        .withFailureHandler(handleSaveError)
+        .RE_saveSettingsFromUi(settings);
+    }
+
+    function handleSaveSuccess(result) {
+      const messageDiv = document.getElementById('message');
+
+      if (result.success) {
+        messageDiv.innerHTML = `
+          <div class="success-message">
+            <strong>Success!</strong><br>
+            ${result.message}
+          </div>
+        `;
+
+        // Update original values
+        document.querySelectorAll('input[type="number"]').forEach(input => {
+          input.setAttribute('data-original', input.value);
+        });
+
+        // Auto-close after 2 seconds
+        setTimeout(() => {
+          google.script.host.close();
+        }, 2000);
+      } else {
+        messageDiv.innerHTML = `
+          <div class="error-message">
+            <strong>Error!</strong><br>
+            ${result.message}
+          </div>
+        `;
+      }
+
+      document.querySelector('.btn-primary').disabled = false;
+      document.querySelector('.btn-primary').textContent = '💾 Save Settings';
+    }
+
+    function handleSaveError(error) {
+      const messageDiv = document.getElementById('message');
+
+      messageDiv.innerHTML = `
+        <div class="error-message">
+          <strong>Error!</strong><br>
+          ${error.message}
+        </div>
+      `;
+
+      document.querySelector('.btn-primary').disabled = false;
+      document.querySelector('.btn-primary').textContent = '💾 Save Settings';
+    }
+  </script>
+</body>
+</html>
