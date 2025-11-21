@@ -195,6 +195,54 @@
       background: #e0e0e0;
       margin: 20px 0;
     }
+
+    .crm-status {
+      background: white;
+      padding: 12px;
+      border-radius: 6px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .crm-status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #ccc;
+    }
+
+    .status-dot.connected {
+      background: #4caf50;
+      box-shadow: 0 0 6px rgba(76, 175, 80, 0.5);
+    }
+
+    .status-dot.disconnected {
+      background: #f44336;
+    }
+
+    .crm-config-btn {
+      padding: 4px 12px;
+      border: none;
+      border-radius: 4px;
+      font-size: 11px;
+      background: #e0e0e0;
+      color: #333;
+      cursor: pointer;
+    }
+
+    .crm-config-btn:hover {
+      background: #d0d0d0;
+    }
   </style>
 </head>
 <body>
@@ -240,6 +288,17 @@
 
         <div class="divider"></div>
 
+        <h2>🏢 CompanyHub CRM</h2>
+        <div id="crmStatus" class="crm-status">
+          <div class="crm-status-indicator">
+            <div class="status-dot"></div>
+            <span>Loading...</span>
+          </div>
+        </div>
+        <button class="btn btn-secondary" onclick="syncToCRM()">📤 Sync HOT/SOLID to CRM</button>
+
+        <div class="divider"></div>
+
         <h2>Action Items (${data.actionItems.length})</h2>
         ${renderActionItems(data.actionItems)}
 
@@ -250,6 +309,9 @@
       `;
 
       document.getElementById('content').innerHTML = html;
+
+      // Load CRM status after rendering
+      loadCRMStatus();
     }
 
     function renderActionItems(items) {
@@ -336,6 +398,55 @@
 
     function openDealReview() {
       google.script.run.RE_showDealReview();
+    }
+
+    // CompanyHub CRM functions
+    function loadCRMStatus() {
+      google.script.run
+        .withSuccessHandler(renderCRMStatus)
+        .withFailureHandler(() => {
+          renderCRMStatus({ configured: false, apiKey: 'Error', accountUrl: 'Error' });
+        })
+        .RE_getCompanyHubStatus();
+    }
+
+    function renderCRMStatus(status) {
+      const statusDiv = document.getElementById('crmStatus');
+      if (!statusDiv) return;
+
+      const isConnected = status.configured;
+      const statusHtml = `
+        <div class="crm-status-indicator">
+          <div class="status-dot ${isConnected ? 'connected' : 'disconnected'}"></div>
+          <span>${isConnected ? '✓ Connected' : '✗ Not Configured'}</span>
+        </div>
+        <button class="crm-config-btn" onclick="openSettings()">⚙️ Configure</button>
+      `;
+
+      statusDiv.innerHTML = statusHtml;
+    }
+
+    function syncToCRM() {
+      if (!confirm('Sync HOT and SOLID deals to CompanyHub?\n\nThis will create/update records in your CRM.')) {
+        return;
+      }
+
+      // Show loading
+      alert('Syncing to CompanyHub...\n\nThis may take a moment.');
+
+      google.script.run
+        .withSuccessHandler((result) => {
+          alert(`✅ Sync Complete!\n\n${result.message}`);
+          location.reload();
+        })
+        .withFailureHandler((error) => {
+          alert(`❌ Sync Failed!\n\n${error.message}`);
+        })
+        .RE_syncAllDealsFromUi();
+    }
+
+    function openSettings() {
+      google.script.run.RE_showSettings();
     }
   </script>
 </body>

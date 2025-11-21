@@ -40,7 +40,8 @@ const SHEET_NAMES = {
   OFFERS_DISPO: 'OFFERS_DISPO',
   SETTINGS: 'SETTINGS',
   SYSTEM_LOG: 'SYSTEM_LOG',
-  DASHBOARD_ANALYTICS: 'DASHBOARD_ANALYTICS'
+  DASHBOARD_ANALYTICS: 'DASHBOARD_ANALYTICS',
+  SYNC_LOG: 'SYNC_LOG'
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -173,6 +174,11 @@ const HEADERS = {
     'Best Contact Time',
     'Notes',
     'Status',
+    'Push to CRM',
+    'CRM Synced',
+    'CRM Record ID',
+    'Last Sync Date',
+    'Dedupe Hash',
     'Last Updated',
     'Created Date'
   ],
@@ -421,6 +427,24 @@ const HEADERS = {
     'Change',
     'Category',
     'Last Updated'
+  ],
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // SYNC_LOG (CompanyHub CRM Integration)
+  // ─────────────────────────────────────────────────────────────────────────
+  SYNC_LOG: [
+    'Timestamp',
+    'System Origin',
+    'Action',
+    'Object Type',
+    'CompanyHub Record ID',
+    'Sheets Row Number',
+    'Property/Vehicle ID',
+    'Status',
+    'Message',
+    'Request Payload',
+    'Response Payload',
+    'User'
   ]
 };
 
@@ -510,6 +534,15 @@ const DEFAULT_SETTINGS = {
 
   // Buyer Matching
   'buyer.match.minScore': { value: 60, description: 'Min match score to show buyer', category: 'Buyer Match' },
+
+  // CompanyHub CRM Integration
+  'companyhub.apiKey': { value: '', description: 'CompanyHub API Key', category: 'CompanyHub' },
+  'companyhub.accountUrl': { value: '', description: 'CompanyHub Account URL (e.g., https://yourcompany.companyhub.com)', category: 'CompanyHub' },
+  'companyhub.autoSyncEnabled': { value: false, description: 'Enable automatic sync to CompanyHub', category: 'CompanyHub' },
+  'companyhub.syncOnlyHotSolid': { value: true, description: 'Only sync HOT and SOLID deals', category: 'CompanyHub' },
+  'companyhub.autoCreateContacts': { value: true, description: 'Auto-create Contact records for sellers', category: 'CompanyHub' },
+  'companyhub.autoCreateDeals': { value: 'HOT_ONLY', description: 'Auto-create Deals (HOT_ONLY, HOT_SOLID, NEVER)', category: 'CompanyHub' },
+  'companyhub.dedupeStrategy': { value: 'HASH_ADDRESS_COMBO', description: 'Deduplication strategy', category: 'CompanyHub' },
 
   // System
   'system.autoArchiveDays': { value: 180, description: 'Days before auto-archiving dead leads', category: 'System' },

@@ -439,3 +439,83 @@ function formatPercentage(value) {
 function formatDate(date) {
   return RE_formatDate(date);
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// COMPANYHUB CRM FUNCTIONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Gets CompanyHub connection status for UI
+ *
+ * @returns {Object} Connection status
+ */
+function RE_getCompanyHubStatus() {
+  const config = CH_getConfig();
+
+  return {
+    configured: !!(config.apiKey && config.accountUrl),
+    apiKey: config.apiKey ? config.apiKey.substring(0, 8) + '...' : 'Not set',
+    accountUrl: config.accountUrl || 'Not set',
+    autoSyncEnabled: config.autoSyncEnabled,
+    syncOnlyHotSolid: config.syncOnlyHotSolid
+  };
+}
+
+/**
+ * Syncs a single property from UI
+ *
+ * @param {string} propertyId - Property ID to sync
+ * @returns {Object} Sync result
+ */
+function RE_syncPropertyFromUi(propertyId) {
+  try {
+    const config = CH_getConfig();
+
+    if (!config.apiKey || !config.accountUrl) {
+      return {
+        success: false,
+        message: 'CompanyHub not configured. Please add API Key and Account URL in Settings.'
+      };
+    }
+
+    const result = CH_syncProperty(propertyId);
+
+    return result;
+
+  } catch (error) {
+    RE_logError('RE_syncPropertyFromUi', `Error syncing property: ${error.message}`);
+    return {
+      success: false,
+      message: `Error: ${error.message}`
+    };
+  }
+}
+
+/**
+ * Syncs all HOT/SOLID deals from UI
+ *
+ * @returns {Object} Sync summary
+ */
+function RE_syncAllDealsFromUi() {
+  try {
+    const config = CH_getConfig();
+
+    if (!config.apiKey || !config.accountUrl) {
+      return {
+        success: false,
+        message: 'CompanyHub not configured. Please add API Key and Account URL in Settings.'
+      };
+    }
+
+    const summary = CH_syncHotSolidDeals();
+
+    return summary;
+
+  } catch (error) {
+    RE_logError('RE_syncAllDealsFromUi', `Error syncing deals: ${error.message}`);
+    return {
+      success: false,
+      message: `Error: ${error.message}`
+    };
+  }
+}

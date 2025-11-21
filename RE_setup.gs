@@ -28,6 +28,11 @@ function onOpen() {
     .addItem('📊 Run Full Analysis (All Deals)', 'RE_runFullAnalysis')
     .addItem('🏅 Rebuild Verdict / Hot Deals', 'RE_rebuildVerdict')
     .addSeparator()
+    .addSubMenu(ui.createMenu('🏢 CompanyHub CRM')
+      .addItem('🔗 Test Connection', 'CH_testConnectionMenu')
+      .addItem('📤 Sync HOT/SOLID Deals', 'CH_syncAllDealsToCompanyHub')
+      .addItem('📋 View Sync Log', 'CH_openSyncLog'))
+    .addSeparator()
     .addItem('🎛️ Control Center', 'RE_showControlCenter')
     .addItem('➕ Lead Intake', 'RE_showLeadIntake')
     .addItem('📂 Deal Review Panel', 'RE_showDealReview')
@@ -37,6 +42,34 @@ function onOpen() {
     .addToUi();
 
   RE_logInfo('onOpen', 'Quantum RE Analyzer menu loaded');
+}
+
+/**
+ * Menu function to test CompanyHub connection
+ */
+function CH_testConnectionMenu() {
+  const ui = SpreadsheetApp.getUi();
+  const result = CH_testConnection();
+
+  ui.alert(
+    result.success ? '✅ Connection Successful' : '❌ Connection Failed',
+    result.message,
+    ui.ButtonSet.OK
+  );
+}
+
+/**
+ * Menu function to open SYNC_LOG sheet
+ */
+function CH_openSyncLog() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const syncLogSheet = ss.getSheetByName(SHEET_NAMES.SYNC_LOG);
+
+  if (syncLogSheet) {
+    syncLogSheet.activate();
+  } else {
+    SpreadsheetApp.getUi().alert('SYNC_LOG sheet not found. Run Setup first.');
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -143,6 +176,7 @@ function RE_createSystemSheets() {
   RE_createSheet(SHEET_NAMES.SETTINGS, HEADERS.SETTINGS, COLORS.TAB_SYSTEM);
   RE_createSheet(SHEET_NAMES.SYSTEM_LOG, HEADERS.SYSTEM_LOG, COLORS.TAB_SYSTEM);
   RE_createSheet(SHEET_NAMES.DASHBOARD_ANALYTICS, HEADERS.DASHBOARD_ANALYTICS, COLORS.TAB_SYSTEM);
+  RE_createSheet(SHEET_NAMES.SYNC_LOG, HEADERS.SYNC_LOG, COLORS.TAB_SYSTEM);
 
   RE_logInfo('RE_createSystemSheets', 'System sheets created/updated');
 }
