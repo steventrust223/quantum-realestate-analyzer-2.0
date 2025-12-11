@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Marketing Center - Quantum Real Estate Analyzer</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .nav-header {
+            background: white;
+            padding: 15px 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .nav-header h1 { color: #667eea; font-size: 1.5em; }
+        .back-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+        .tab {
+            padding: 12px 24px;
+            border: 2px solid white;
+            border-radius: 8px;
+            cursor: pointer;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            font-weight: 600;
+        }
+        .tab.active, .tab:hover { background: white; color: #667eea; }
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        .card h2 {
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .btn:hover { opacity: 0.9; }
+        .btn-secondary { background: #6c757d; }
+        .btn-success { background: #28a745; }
+        .btn-danger { background: #dc3545; }
+        .btn-sm { padding: 6px 12px; font-size: 12px; }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #667eea22 0%, #764ba222 100%);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .stat-value { font-size: 2em; font-weight: bold; color: #667eea; }
+        .stat-label { font-size: 12px; color: #666; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 600; color: #555; }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal.active { display: flex; }
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .close-btn { background: none; border: none; font-size: 24px; cursor: pointer; }
+        .campaign-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-left: 4px solid #667eea;
+        }
+        .campaign-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+        .campaign-title { font-weight: 600; font-size: 1.1em; color: #333; }
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .status-active { background: #e8f5e9; color: #2e7d32; }
+        .status-paused { background: #fff3e0; color: #ef6c00; }
+        .status-completed { background: #e3f2fd; color: #1565c0; }
+        .campaign-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 15px; }
+        .campaign-stat { text-align: center; }
+        .campaign-stat-value { font-weight: bold; color: #667eea; }
+        .campaign-stat-label { font-size: 11px; color: #666; }
+        .lead-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .lead-info h4 { color: #333; margin-bottom: 5px; }
+        .lead-info p { font-size: 12px; color: #666; }
+        .lead-source {
+            padding: 3px 10px;
+            border-radius: 15px;
+            font-size: 11px;
+            background: #e3f2fd;
+            color: #1565c0;
+        }
+        .empty-state { text-align: center; padding: 40px; color: #999; }
+        .channel-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+        .channel-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .channel-card:hover { background: #e3f2fd; transform: translateY(-2px); }
+        .channel-icon { font-size: 2em; margin-bottom: 10px; }
+        .channel-name { font-weight: 600; color: #333; }
+        .channel-status { font-size: 12px; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="nav-header">
+            <h1>Marketing Center</h1>
+            <a href="control-center.html" class="back-btn">Back to Control Center</a>
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('campaigns')">Campaigns</div>
+            <div class="tab" onclick="switchTab('leads')">Leads</div>
+            <div class="tab" onclick="switchTab('channels')">Marketing Channels</div>
+        </div>
+
+        <!-- Campaigns Tab -->
+        <div id="campaigns-tab" class="tab-content active">
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2 style="margin: 0; border: none; padding: 0;">Marketing Campaigns</h2>
+                    <button class="btn" onclick="openModal('addCampaign')">+ New Campaign</button>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalCampaigns">0</div>
+                        <div class="stat-label">Total Campaigns</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="activeCampaigns">0</div>
+                        <div class="stat-label">Active</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalSpent">$0</div>
+                        <div class="stat-label">Total Spent</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalLeadsGen">0</div>
+                        <div class="stat-label">Leads Generated</div>
+                    </div>
+                </div>
+
+                <div id="campaignsList">
+                    <div class="empty-state">No campaigns yet. Create your first marketing campaign!</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Leads Tab -->
+        <div id="leads-tab" class="tab-content">
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2 style="margin: 0; border: none; padding: 0;">Marketing Leads</h2>
+                    <button class="btn" onclick="openModal('addLead')">+ Add Lead</button>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalLeads">0</div>
+                        <div class="stat-label">Total Leads</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="newLeads">0</div>
+                        <div class="stat-label">New</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="contactedLeads">0</div>
+                        <div class="stat-label">Contacted</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="convertedLeads">0</div>
+                        <div class="stat-label">Converted</div>
+                    </div>
+                </div>
+
+                <div id="leadsList">
+                    <div class="empty-state">No leads yet</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Channels Tab -->
+        <div id="channels-tab" class="tab-content">
+            <div class="card">
+                <h2>Marketing Channels</h2>
+                <p style="color: #666; margin-bottom: 20px;">Configure and manage your marketing channels for lead generation.</p>
+
+                <div class="channel-grid">
+                    <div class="channel-card">
+                        <div class="channel-icon">&#x1F4EC;</div>
+                        <div class="channel-name">Direct Mail</div>
+                        <div class="channel-status">Classic outreach</div>
+                    </div>
+                    <div class="channel-card">
+                        <div class="channel-icon">&#x1F4F1;</div>
+                        <div class="channel-name">SMS Marketing</div>
+                        <div class="channel-status">Text campaigns</div>
+                    </div>
+                    <div class="channel-card">
+                        <div class="channel-icon">&#x1F4E7;</div>
+                        <div class="channel-name">Email Marketing</div>
+                        <div class="channel-status">Newsletter & drips</div>
+                    </div>
+                    <div class="channel-card">
+                        <div class="channel-icon">&#x1F4F2;</div>
+                        <div class="channel-name">Cold Calling</div>
+                        <div class="channel-status">Phone outreach</div>
+                    </div>
+                    <div class="channel-card">
+                        <div class="channel-icon">&#x1F310;</div>
+                        <div class="channel-name">Online Ads</div>
+                        <div class="channel-status">PPC & Social</div>
+                    </div>
+                    <div class="channel-card">
+                        <div class="channel-icon">&#x1F697;</div>
+                        <div class="channel-name">Driving for Dollars</div>
+                        <div class="channel-status">Field prospecting</div>
+                    </div>
+                    <div class="channel-card">
+                        <div class="channel-icon">&#x1F4CB;</div>
+                        <div class="channel-name">Bandit Signs</div>
+                        <div class="channel-status">Street marketing</div>
+                    </div>
+                    <div class="channel-card">
+                        <div class="channel-icon">&#x1F91D;</div>
+                        <div class="channel-name">Networking</div>
+                        <div class="channel-status">REI meetups</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Campaign Modal -->
+    <div class="modal" id="addCampaignModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Create New Campaign</h3>
+                <button class="close-btn" onclick="closeModal('addCampaign')">&times;</button>
+            </div>
+            <form id="addCampaignForm">
+                <div class="form-group">
+                    <label>Campaign Name *</label>
+                    <input type="text" name="name" required placeholder="Q4 Direct Mail Campaign">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Channel *</label>
+                        <select name="channel" required>
+                            <option value="direct_mail">Direct Mail</option>
+                            <option value="sms">SMS Marketing</option>
+                            <option value="email">Email Marketing</option>
+                            <option value="cold_call">Cold Calling</option>
+                            <option value="ppc">PPC Advertising</option>
+                            <option value="social">Social Media</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Budget ($)</label>
+                        <input type="number" name="budget" placeholder="5000">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Start Date</label>
+                        <input type="date" name="startDate">
+                    </div>
+                    <div class="form-group">
+                        <label>End Date</label>
+                        <input type="date" name="endDate">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Target Area</label>
+                    <input type="text" name="targetArea" placeholder="Miami-Dade County">
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea name="description" rows="3" placeholder="Campaign goals and strategy..."></textarea>
+                </div>
+                <button type="submit" class="btn">Create Campaign</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal('addCampaign')">Cancel</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Lead Modal -->
+    <div class="modal" id="addLeadModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Add New Lead</h3>
+                <button class="close-btn" onclick="closeModal('addLead')">&times;</button>
+            </div>
+            <form id="addLeadForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Name *</label>
+                        <input type="text" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Phone *</label>
+                        <input type="tel" name="phone" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" name="email">
+                </div>
+                <div class="form-group">
+                    <label>Property Address</label>
+                    <input type="text" name="propertyAddress" placeholder="123 Main St, City, State">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Lead Source *</label>
+                        <select name="source" required>
+                            <option value="direct_mail">Direct Mail</option>
+                            <option value="sms">SMS Response</option>
+                            <option value="cold_call">Cold Call</option>
+                            <option value="website">Website</option>
+                            <option value="referral">Referral</option>
+                            <option value="driving">Driving for Dollars</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Campaign</label>
+                        <select name="campaignId" id="leadCampaignSelect">
+                            <option value="">No Campaign</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Notes</label>
+                    <textarea name="notes" rows="3"></textarea>
+                </div>
+                <button type="submit" class="btn">Add Lead</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal('addLead')">Cancel</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api';
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById(`${tab}-tab`).classList.add('active');
+        }
+
+        function openModal(type) {
+            document.getElementById(`${type}Modal`).classList.add('active');
+        }
+
+        function closeModal(type) {
+            document.getElementById(`${type}Modal`).classList.remove('active');
+        }
+
+        async function loadMarketing() {
+            try {
+                const response = await fetch(`${API_BASE}/marketing`);
+                const result = await response.json();
+                if (result.success) {
+                    const campaigns = result.data.campaigns || [];
+                    const leads = result.data.leads || [];
+
+                    // Update campaign stats
+                    document.getElementById('totalCampaigns').textContent = campaigns.length;
+                    document.getElementById('activeCampaigns').textContent = campaigns.filter(c => c.status === 'active').length;
+                    document.getElementById('totalSpent').textContent = '$' + formatNumber(campaigns.reduce((sum, c) => sum + (c.spent || 0), 0));
+                    document.getElementById('totalLeadsGen').textContent = campaigns.reduce((sum, c) => sum + (c.leadsGenerated || 0), 0);
+
+                    // Update lead stats
+                    document.getElementById('totalLeads').textContent = leads.length;
+                    document.getElementById('newLeads').textContent = leads.filter(l => l.status === 'new').length;
+                    document.getElementById('contactedLeads').textContent = leads.filter(l => l.status === 'contacted').length;
+                    document.getElementById('convertedLeads').textContent = leads.filter(l => l.status === 'converted').length;
+
+                    // Render campaigns
+                    renderCampaigns(campaigns);
+                    renderLeads(leads);
+
+                    // Populate campaign dropdown
+                    const select = document.getElementById('leadCampaignSelect');
+                    select.innerHTML = '<option value="">No Campaign</option>' +
+                        campaigns.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+                }
+            } catch (error) {
+                console.error('Error loading marketing:', error);
+            }
+        }
+
+        function renderCampaigns(campaigns) {
+            const container = document.getElementById('campaignsList');
+            if (campaigns.length > 0) {
+                container.innerHTML = campaigns.map(c => `
+                    <div class="campaign-card">
+                        <div class="campaign-header">
+                            <div>
+                                <div class="campaign-title">${c.name}</div>
+                                <small style="color: #666;">${(c.channel || '').replace('_', ' ')} | ${c.targetArea || 'No target area'}</small>
+                            </div>
+                            <span class="status-badge status-${c.status}">${c.status?.toUpperCase()}</span>
+                        </div>
+                        <div class="campaign-stats">
+                            <div class="campaign-stat">
+                                <div class="campaign-stat-value">$${formatNumber(c.budget || 0)}</div>
+                                <div class="campaign-stat-label">Budget</div>
+                            </div>
+                            <div class="campaign-stat">
+                                <div class="campaign-stat-value">$${formatNumber(c.spent || 0)}</div>
+                                <div class="campaign-stat-label">Spent</div>
+                            </div>
+                            <div class="campaign-stat">
+                                <div class="campaign-stat-value">${c.leadsGenerated || 0}</div>
+                                <div class="campaign-stat-label">Leads</div>
+                            </div>
+                            <div class="campaign-stat">
+                                <div class="campaign-stat-value">${c.leadsGenerated > 0 ? '$' + Math.round((c.spent || 0) / c.leadsGenerated) : '-'}</div>
+                                <div class="campaign-stat-label">Cost/Lead</div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                container.innerHTML = '<div class="empty-state">No campaigns yet. Create your first marketing campaign!</div>';
+            }
+        }
+
+        function renderLeads(leads) {
+            const container = document.getElementById('leadsList');
+            if (leads.length > 0) {
+                container.innerHTML = leads.map(l => `
+                    <div class="lead-item">
+                        <div class="lead-info">
+                            <h4>${l.name}</h4>
+                            <p>${l.phone} | ${l.propertyAddress || 'No address'}</p>
+                        </div>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <span class="lead-source">${(l.source || '').replace('_', ' ')}</span>
+                            <span class="status-badge status-${l.status === 'new' ? 'active' : l.status}">${l.status}</span>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                container.innerHTML = '<div class="empty-state">No leads yet</div>';
+            }
+        }
+
+        document.getElementById('addCampaignForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const campaign = Object.fromEntries(formData);
+            if (campaign.budget) campaign.budget = Number(campaign.budget);
+            campaign.spent = 0;
+            campaign.leadsGenerated = 0;
+
+            try {
+                const response = await fetch(`${API_BASE}/marketing/campaigns`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(campaign)
+                });
+                const result = await response.json();
+                if (result.success) {
+                    alert('Campaign created!');
+                    closeModal('addCampaign');
+                    e.target.reset();
+                    loadMarketing();
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        });
+
+        document.getElementById('addLeadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const lead = Object.fromEntries(formData);
+
+            try {
+                const response = await fetch(`${API_BASE}/marketing/leads`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(lead)
+                });
+                const result = await response.json();
+                if (result.success) {
+                    alert('Lead added!');
+                    closeModal('addLead');
+                    e.target.reset();
+                    loadMarketing();
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        });
+
+        function formatNumber(num) {
+            return Math.round(num).toLocaleString();
+        }
+
+        loadMarketing();
+    </script>
+</body>
+</html>

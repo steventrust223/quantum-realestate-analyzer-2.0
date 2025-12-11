@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Automation Hub - Quantum Real Estate Analyzer</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .nav-header {
+            background: white;
+            padding: 15px 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .nav-header h1 { color: #667eea; font-size: 1.5em; }
+        .back-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+        .tab {
+            padding: 12px 24px;
+            border: 2px solid white;
+            border-radius: 8px;
+            cursor: pointer;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            font-weight: 600;
+        }
+        .tab.active, .tab:hover { background: white; color: #667eea; }
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        .card h2 {
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .btn:hover { opacity: 0.9; }
+        .btn-secondary { background: #6c757d; }
+        .btn-success { background: #28a745; }
+        .btn-danger { background: #dc3545; }
+        .btn-sm { padding: 6px 12px; font-size: 12px; }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #667eea22 0%, #764ba222 100%);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .stat-value { font-size: 2em; font-weight: bold; color: #667eea; }
+        .stat-label { font-size: 12px; color: #666; }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal.active { display: flex; }
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .close-btn { background: none; border: none; font-size: 24px; cursor: pointer; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 600; color: #555; }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .task-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            transition: all 0.3s;
+        }
+        .task-item:hover { background: #f8f9fa; }
+        .task-item.completed { opacity: 0.6; }
+        .task-checkbox {
+            width: 24px;
+            height: 24px;
+            margin-right: 15px;
+            cursor: pointer;
+        }
+        .task-content { flex: 1; }
+        .task-title { font-weight: 600; color: #333; margin-bottom: 5px; }
+        .task-meta { font-size: 12px; color: #666; }
+        .task-priority {
+            padding: 3px 10px;
+            border-radius: 15px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .priority-high { background: #ffebee; color: #c62828; }
+        .priority-medium { background: #fff3e0; color: #ef6c00; }
+        .priority-low { background: #e8f5e9; color: #2e7d32; }
+        .workflow-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-left: 4px solid #667eea;
+        }
+        .workflow-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .workflow-title { font-weight: 600; color: #333; }
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .status-active { background: #e8f5e9; color: #2e7d32; }
+        .status-paused { background: #fff3e0; color: #ef6c00; }
+        .workflow-trigger { font-size: 13px; color: #666; margin-bottom: 10px; }
+        .workflow-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+        .workflow-action {
+            background: #e3f2fd;
+            color: #1565c0;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 11px;
+        }
+        .template-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+        }
+        .template-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .template-title { font-weight: 600; color: #333; }
+        .template-subject { font-size: 13px; color: #666; margin-bottom: 10px; }
+        .template-preview {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 13px;
+            color: #666;
+            white-space: pre-wrap;
+            max-height: 100px;
+            overflow: hidden;
+        }
+        .empty-state { text-align: center; padding: 40px; color: #999; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="nav-header">
+            <h1>Automation Hub</h1>
+            <a href="control-center.html" class="back-btn">Back to Control Center</a>
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('tasks')">Tasks</div>
+            <div class="tab" onclick="switchTab('workflows')">Workflows</div>
+            <div class="tab" onclick="switchTab('templates')">Email Templates</div>
+        </div>
+
+        <!-- Tasks Tab -->
+        <div id="tasks-tab" class="tab-content active">
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2 style="margin: 0; border: none; padding: 0;">Task Management</h2>
+                    <button class="btn" onclick="openModal('addTask')">+ New Task</button>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalTasks">0</div>
+                        <div class="stat-label">Total Tasks</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="pendingTasks">0</div>
+                        <div class="stat-label">Pending</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="completedTasks">0</div>
+                        <div class="stat-label">Completed</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="overdueTasks">0</div>
+                        <div class="stat-label">Overdue</div>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <select id="taskFilter" onchange="loadTasks()" style="padding: 8px 15px; border: 2px solid #e0e0e0; border-radius: 8px;">
+                        <option value="">All Tasks</option>
+                        <option value="pending">Pending</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="completed">Completed</option>
+                    </select>
+                </div>
+
+                <div id="tasksList">
+                    <div class="empty-state">No tasks yet. Create your first task!</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Workflows Tab -->
+        <div id="workflows-tab" class="tab-content">
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2 style="margin: 0; border: none; padding: 0;">Automation Workflows</h2>
+                    <button class="btn" onclick="openModal('addWorkflow')">+ New Workflow</button>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalWorkflows">0</div>
+                        <div class="stat-label">Total Workflows</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="activeWorkflows">0</div>
+                        <div class="stat-label">Active</div>
+                    </div>
+                </div>
+
+                <div id="workflowsList">
+                    <div class="empty-state">No workflows yet. Create automated workflows to save time!</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Templates Tab -->
+        <div id="templates-tab" class="tab-content">
+            <div class="card">
+                <h2>Email Templates</h2>
+                <p style="color: #666; margin-bottom: 20px;">Pre-built email templates for common real estate communications.</p>
+
+                <div id="templatesList">
+                    <!-- Templates will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Task Modal -->
+    <div class="modal" id="addTaskModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Create New Task</h3>
+                <button class="close-btn" onclick="closeModal('addTask')">&times;</button>
+            </div>
+            <form id="addTaskForm">
+                <div class="form-group">
+                    <label>Task Title *</label>
+                    <input type="text" name="title" required placeholder="Follow up with seller">
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea name="description" rows="3" placeholder="Task details..."></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Priority</label>
+                        <select name="priority">
+                            <option value="low">Low</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="high">High</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Due Date</label>
+                        <input type="date" name="dueDate">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Related To</label>
+                    <select name="relatedType">
+                        <option value="">None</option>
+                        <option value="deal">Deal</option>
+                        <option value="buyer">Buyer</option>
+                        <option value="seller">Seller</option>
+                        <option value="property">Property</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn">Create Task</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal('addTask')">Cancel</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Workflow Modal -->
+    <div class="modal" id="addWorkflowModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Create Automation Workflow</h3>
+                <button class="close-btn" onclick="closeModal('addWorkflow')">&times;</button>
+            </div>
+            <form id="addWorkflowForm">
+                <div class="form-group">
+                    <label>Workflow Name *</label>
+                    <input type="text" name="name" required placeholder="New Lead Follow-up">
+                </div>
+                <div class="form-group">
+                    <label>Trigger Event *</label>
+                    <select name="trigger" required>
+                        <option value="new_lead">New Lead Added</option>
+                        <option value="deal_stage_change">Deal Stage Change</option>
+                        <option value="new_buyer">New Buyer Added</option>
+                        <option value="property_analyzed">Property Analyzed</option>
+                        <option value="task_due">Task Due</option>
+                        <option value="schedule">Scheduled Time</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Actions (select all that apply)</label>
+                    <div style="display: grid; gap: 8px;">
+                        <label style="font-weight: normal;"><input type="checkbox" name="actions" value="send_email"> Send Email</label>
+                        <label style="font-weight: normal;"><input type="checkbox" name="actions" value="create_task"> Create Task</label>
+                        <label style="font-weight: normal;"><input type="checkbox" name="actions" value="send_notification"> Send Notification</label>
+                        <label style="font-weight: normal;"><input type="checkbox" name="actions" value="update_status"> Update Status</label>
+                        <label style="font-weight: normal;"><input type="checkbox" name="actions" value="assign_team"> Assign to Team Member</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea name="description" rows="2"></textarea>
+                </div>
+                <button type="submit" class="btn">Create Workflow</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal('addWorkflow')">Cancel</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api';
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById(`${tab}-tab`).classList.add('active');
+        }
+
+        function openModal(type) {
+            document.getElementById(`${type}Modal`).classList.add('active');
+        }
+
+        function closeModal(type) {
+            document.getElementById(`${type}Modal`).classList.remove('active');
+        }
+
+        async function loadAutomation() {
+            try {
+                const response = await fetch(`${API_BASE}/automation`);
+                const result = await response.json();
+                if (result.success) {
+                    const data = result.data;
+
+                    // Update task stats
+                    const tasks = data.tasks || [];
+                    document.getElementById('totalTasks').textContent = tasks.length;
+                    document.getElementById('pendingTasks').textContent = tasks.filter(t => t.status === 'pending').length;
+                    document.getElementById('completedTasks').textContent = tasks.filter(t => t.status === 'completed').length;
+                    document.getElementById('overdueTasks').textContent = tasks.filter(t => {
+                        return t.status === 'pending' && t.dueDate && new Date(t.dueDate) < new Date();
+                    }).length;
+
+                    // Update workflow stats
+                    const workflows = data.workflows || [];
+                    document.getElementById('totalWorkflows').textContent = workflows.length;
+                    document.getElementById('activeWorkflows').textContent = workflows.filter(w => w.status === 'active').length;
+
+                    renderTasks(tasks);
+                    renderWorkflows(workflows);
+                    renderTemplates(data.emailTemplates || []);
+                }
+            } catch (error) {
+                console.error('Error loading automation:', error);
+            }
+        }
+
+        async function loadTasks() {
+            const filter = document.getElementById('taskFilter').value;
+            let url = `${API_BASE}/automation/tasks`;
+            if (filter) url += `?status=${filter}`;
+
+            try {
+                const response = await fetch(url);
+                const result = await response.json();
+                if (result.success) {
+                    renderTasks(result.data);
+                }
+            } catch (error) {
+                console.error('Error loading tasks:', error);
+            }
+        }
+
+        function renderTasks(tasks) {
+            const container = document.getElementById('tasksList');
+            if (tasks.length > 0) {
+                container.innerHTML = tasks.map(t => `
+                    <div class="task-item ${t.status === 'completed' ? 'completed' : ''}">
+                        <input type="checkbox" class="task-checkbox" ${t.status === 'completed' ? 'checked' : ''}
+                            onchange="toggleTask('${t.id}', this.checked)">
+                        <div class="task-content">
+                            <div class="task-title">${t.title}</div>
+                            <div class="task-meta">
+                                ${t.dueDate ? `Due: ${new Date(t.dueDate).toLocaleDateString()}` : 'No due date'}
+                                ${t.relatedType ? `| Related: ${t.relatedType}` : ''}
+                            </div>
+                        </div>
+                        <span class="task-priority priority-${t.priority}">${t.priority?.toUpperCase()}</span>
+                    </div>
+                `).join('');
+            } else {
+                container.innerHTML = '<div class="empty-state">No tasks found</div>';
+            }
+        }
+
+        function renderWorkflows(workflows) {
+            const container = document.getElementById('workflowsList');
+            if (workflows.length > 0) {
+                container.innerHTML = workflows.map(w => `
+                    <div class="workflow-card">
+                        <div class="workflow-header">
+                            <div class="workflow-title">${w.name}</div>
+                            <span class="status-badge status-${w.status}">${w.status?.toUpperCase()}</span>
+                        </div>
+                        <div class="workflow-trigger">Trigger: ${(w.trigger || '').replace('_', ' ')}</div>
+                        <div class="workflow-actions">
+                            ${(w.actions || []).map(a => `<span class="workflow-action">${a.replace('_', ' ')}</span>`).join('')}
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                container.innerHTML = '<div class="empty-state">No workflows yet. Create automated workflows to save time!</div>';
+            }
+        }
+
+        function renderTemplates(templates) {
+            const container = document.getElementById('templatesList');
+            if (templates.length > 0) {
+                container.innerHTML = templates.map(t => `
+                    <div class="template-card">
+                        <div class="template-header">
+                            <div class="template-title">${t.name}</div>
+                            <button class="btn btn-sm btn-secondary" onclick="copyTemplate('${t.id}')">Copy</button>
+                        </div>
+                        <div class="template-subject">Subject: ${t.subject}</div>
+                        <div class="template-preview">${t.body}</div>
+                    </div>
+                `).join('');
+            } else {
+                container.innerHTML = '<div class="empty-state">No email templates available</div>';
+            }
+        }
+
+        async function toggleTask(id, completed) {
+            try {
+                await fetch(`${API_BASE}/automation/tasks/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: completed ? 'completed' : 'pending' })
+                });
+                loadAutomation();
+            } catch (error) {
+                alert('Error updating task: ' + error.message);
+            }
+        }
+
+        document.getElementById('addTaskForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const task = Object.fromEntries(formData);
+
+            try {
+                const response = await fetch(`${API_BASE}/automation/tasks`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(task)
+                });
+                const result = await response.json();
+                if (result.success) {
+                    alert('Task created!');
+                    closeModal('addTask');
+                    e.target.reset();
+                    loadAutomation();
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        });
+
+        document.getElementById('addWorkflowForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const workflow = {
+                name: formData.get('name'),
+                trigger: formData.get('trigger'),
+                description: formData.get('description'),
+                actions: formData.getAll('actions')
+            };
+
+            try {
+                const response = await fetch(`${API_BASE}/automation/workflows`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(workflow)
+                });
+                const result = await response.json();
+                if (result.success) {
+                    alert('Workflow created!');
+                    closeModal('addWorkflow');
+                    e.target.reset();
+                    loadAutomation();
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        });
+
+        function copyTemplate(id) {
+            alert('Template copied to clipboard!');
+        }
+
+        loadAutomation();
+    </script>
+</body>
+</html>

@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Property Analysis - Quantum Real Estate Analyzer</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .nav-header {
+            background: white;
+            padding: 15px 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .nav-header h1 { color: #667eea; font-size: 1.5em; }
+        .back-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .back-btn:hover { opacity: 0.9; }
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 1024px) { .main-grid { grid-template-columns: 1fr; } }
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        .card h2 {
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+        .form-group { margin-bottom: 15px; }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #555;
+        }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        .form-group input:focus, .form-group select:focus {
+            border-color: #667eea;
+            outline: none;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 16px;
+            width: 100%;
+            margin-top: 10px;
+        }
+        .btn:hover { opacity: 0.9; transform: translateY(-2px); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-secondary {
+            background: #6c757d;
+            margin-top: 10px;
+        }
+        .analysis-result { display: none; }
+        .analysis-result.active { display: block; }
+        .score-card {
+            text-align: center;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea22 0%, #764ba222 100%);
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+        .score-value {
+            font-size: 3em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .score-label { color: #666; font-size: 14px; }
+        .grade {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 1.2em;
+            margin-top: 10px;
+        }
+        .grade-a { background: #4caf50; color: white; }
+        .grade-b { background: #8bc34a; color: white; }
+        .grade-c { background: #ff9800; color: white; }
+        .grade-d { background: #ff5722; color: white; }
+        .grade-f { background: #f44336; color: white; }
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .metric-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .metric-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #333;
+        }
+        .metric-label { font-size: 12px; color: #666; }
+        .recommendation {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        .recommendation.strong-buy { background: #e8f5e9; border-left: 4px solid #4caf50; }
+        .recommendation.buy { background: #f1f8e9; border-left: 4px solid #8bc34a; }
+        .recommendation.consider { background: #fff3e0; border-left: 4px solid #ff9800; }
+        .recommendation.pass { background: #ffebee; border-left: 4px solid #f44336; }
+        .recommendation h4 { margin-bottom: 5px; }
+        .swot-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .swot-item {
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 13px;
+        }
+        .swot-item h5 { margin-bottom: 5px; font-size: 12px; }
+        .swot-item ul { margin-left: 15px; }
+        .swot-item li { margin-bottom: 3px; }
+        .strengths { background: #e8f5e9; }
+        .weaknesses { background: #ffebee; }
+        .opportunities { background: #e3f2fd; }
+        .threats { background: #fff3e0; }
+        .tab-container { margin-bottom: 20px; }
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .tab {
+            padding: 10px 20px;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            cursor: pointer;
+            background: white;
+            color: #667eea;
+            font-weight: 600;
+        }
+        .tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .saved-properties { margin-top: 20px; }
+        .property-list { max-height: 300px; overflow-y: auto; }
+        .property-item {
+            padding: 10px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .property-item:hover { background: #f8f9fa; border-color: #667eea; }
+        .property-item h4 { color: #333; margin-bottom: 5px; }
+        .property-item p { font-size: 12px; color: #666; }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            display: none;
+        }
+        .loading.active { display: block; }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="nav-header">
+            <h1>Property Analysis - Quantum Engine</h1>
+            <a href="control-center.html" class="back-btn">Back to Control Center</a>
+        </div>
+
+        <div class="tab-container">
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('wholesale')">Wholesale Analysis</div>
+                <div class="tab" onclick="switchTab('sub2')">Sub2 Analysis</div>
+                <div class="tab" onclick="switchTab('arv')">ARV Calculator</div>
+                <div class="tab" onclick="switchTab('repairs')">Repair Estimator</div>
+            </div>
+        </div>
+
+        <div class="main-grid">
+            <!-- Input Forms -->
+            <div class="card">
+                <!-- Wholesale Analysis Form -->
+                <div id="wholesale-form" class="tab-content active">
+                    <h2>Wholesale Deal Analysis</h2>
+                    <form id="wholesaleForm">
+                        <div class="form-group">
+                            <label>Property Address</label>
+                            <input type="text" name="address" placeholder="123 Main St, City, State" required>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Purchase Price ($)</label>
+                                <input type="number" name="purchasePrice" placeholder="150000" required>
+                            </div>
+                            <div class="form-group">
+                                <label>After Repair Value (ARV) ($)</label>
+                                <input type="number" name="arv" placeholder="250000" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Estimated Repair Cost ($)</label>
+                                <input type="number" name="repairCost" placeholder="30000" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Market Value ($)</label>
+                                <input type="number" name="marketValue" placeholder="200000">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Property Condition (1-10)</label>
+                                <input type="number" name="condition" min="1" max="10" placeholder="5">
+                            </div>
+                            <div class="form-group">
+                                <label>Seller Motivation (1-10)</label>
+                                <input type="number" name="sellerMotivation" min="1" max="10" placeholder="7">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Location Score (1-10)</label>
+                                <input type="number" name="locationScore" min="1" max="10" placeholder="6">
+                            </div>
+                            <div class="form-group">
+                                <label>Days on Market</label>
+                                <input type="number" name="daysOnMarket" placeholder="45">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Market Trend</label>
+                            <select name="marketTrend">
+                                <option value="up">Appreciating</option>
+                                <option value="stable" selected>Stable</option>
+                                <option value="down">Declining</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn">Run Quantum Analysis</button>
+                        <button type="button" class="btn btn-secondary" onclick="saveProperty('wholesale')">Save Property</button>
+                    </form>
+                </div>
+
+                <!-- Sub2 Analysis Form -->
+                <div id="sub2-form" class="tab-content">
+                    <h2>Subject-To Deal Analysis</h2>
+                    <form id="sub2Form">
+                        <div class="form-group">
+                            <label>Property Address</label>
+                            <input type="text" name="address" placeholder="123 Main St, City, State" required>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Purchase Price ($)</label>
+                                <input type="number" name="purchasePrice" placeholder="5000" required>
+                            </div>
+                            <div class="form-group">
+                                <label>After Repair Value ($)</label>
+                                <input type="number" name="arv" placeholder="300000" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Existing Mortgage Balance ($)</label>
+                                <input type="number" name="existingMortgageBalance" placeholder="200000" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Monthly Payment ($)</label>
+                                <input type="number" name="monthlyPayment" placeholder="1500" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Interest Rate (%)</label>
+                                <input type="number" step="0.01" name="interestRate" placeholder="4.5" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Remaining Term (months)</label>
+                                <input type="number" name="remainingTerm" placeholder="280" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Market Rent ($)</label>
+                                <input type="number" name="marketRent" placeholder="2000" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Property Condition (1-10)</label>
+                                <input type="number" name="condition" min="1" max="10" placeholder="7">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Seller Motivation (1-10)</label>
+                            <input type="number" name="sellerMotivation" min="1" max="10" placeholder="8">
+                        </div>
+                        <button type="submit" class="btn">Run Sub2 Analysis</button>
+                        <button type="button" class="btn btn-secondary" onclick="saveProperty('sub2')">Save Property</button>
+                    </form>
+                </div>
+
+                <!-- ARV Calculator Form -->
+                <div id="arv-form" class="tab-content">
+                    <h2>ARV Calculator with Comps</h2>
+                    <form id="arvForm">
+                        <h3 style="margin-bottom: 15px; color: #667eea;">Subject Property</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Square Feet</label>
+                                <input type="number" name="squareFeet" placeholder="1800" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Bedrooms</label>
+                                <input type="number" name="bedrooms" placeholder="3" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Bathrooms</label>
+                                <input type="number" step="0.5" name="bathrooms" placeholder="2" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Year Built</label>
+                                <input type="number" name="yearBuilt" placeholder="1995" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Condition After Repair (1-10)</label>
+                            <input type="number" name="conditionAfterRepair" min="1" max="10" placeholder="8">
+                        </div>
+
+                        <h3 style="margin: 20px 0 15px; color: #667eea;">Comparable Sales (Add up to 5)</h3>
+                        <div id="comps-container">
+                            <div class="comp-entry" style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
+                                <h4 style="margin-bottom: 10px;">Comp 1</h4>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Sale Price ($)</label>
+                                        <input type="number" name="comp1_salePrice" placeholder="260000">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Square Feet</label>
+                                        <input type="number" name="comp1_squareFeet" placeholder="1750">
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Bedrooms</label>
+                                        <input type="number" name="comp1_bedrooms" placeholder="3">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Bathrooms</label>
+                                        <input type="number" name="comp1_bathrooms" placeholder="2">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-secondary" onclick="addComp()">+ Add Another Comp</button>
+                        <button type="submit" class="btn">Calculate ARV</button>
+                    </form>
+                </div>
+
+                <!-- Repair Estimator Form -->
+                <div id="repairs-form" class="tab-content">
+                    <h2>Repair Cost Estimator</h2>
+                    <form id="repairsForm">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Square Feet</label>
+                                <input type="number" name="squareFeet" placeholder="1800" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Overall Condition (1-10)</label>
+                                <input type="number" name="condition" min="1" max="10" placeholder="4" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Roof Age (years)</label>
+                                <input type="number" name="roofAge" placeholder="18">
+                            </div>
+                            <div class="form-group">
+                                <label>HVAC Age (years)</label>
+                                <input type="number" name="hvacAge" placeholder="15">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Plumbing Condition (1-10)</label>
+                                <input type="number" name="plumbingCondition" min="1" max="10" placeholder="5">
+                            </div>
+                            <div class="form-group">
+                                <label>Electrical Condition (1-10)</label>
+                                <input type="number" name="electricalCondition" min="1" max="10" placeholder="6">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Foundation Issues?</label>
+                                <select name="foundationIssues">
+                                    <option value="false">No</option>
+                                    <option value="true">Yes</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Cosmetic Needs</label>
+                                <select name="cosmeticNeeds">
+                                    <option value="light">Light</option>
+                                    <option value="medium" selected>Medium</option>
+                                    <option value="heavy">Heavy</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn">Estimate Repairs</button>
+                    </form>
+                </div>
+
+                <!-- Saved Properties Section -->
+                <div class="saved-properties">
+                    <h3 style="margin-bottom: 10px; color: #667eea;">Saved Properties</h3>
+                    <div id="propertyList" class="property-list">
+                        <p style="color: #999; text-align: center; padding: 20px;">No saved properties yet</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results Panel -->
+            <div class="card">
+                <h2>Analysis Results</h2>
+
+                <div class="loading" id="loadingSpinner">
+                    <div class="spinner"></div>
+                    <p>Running Quantum Analysis...</p>
+                </div>
+
+                <div id="analysisPlaceholder" style="text-align: center; padding: 40px; color: #999;">
+                    <p style="font-size: 48px; margin-bottom: 20px;">Enter property details and click "Run Analysis" to see results</p>
+                </div>
+
+                <!-- Wholesale Results -->
+                <div id="wholesale-results" class="analysis-result">
+                    <div class="score-card">
+                        <div class="score-value" id="ws-dealScore">--</div>
+                        <div class="score-label">DEAL SCORE</div>
+                        <div class="grade" id="ws-grade">--</div>
+                    </div>
+
+                    <div class="recommendation" id="ws-recommendation">
+                        <h4 id="ws-action">--</h4>
+                        <p id="ws-message">--</p>
+                    </div>
+
+                    <div class="metrics-grid">
+                        <div class="metric-item">
+                            <div class="metric-value" id="ws-mao">--</div>
+                            <div class="metric-label">MAX ALLOWABLE OFFER</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-value" id="ws-equity">--</div>
+                            <div class="metric-label">EQUITY SPREAD</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-value" id="ws-fee">--</div>
+                            <div class="metric-label">EST. ASSIGNMENT FEE</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-value" id="ws-roi">--</div>
+                            <div class="metric-label">ROI</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-value" id="ws-risk">--</div>
+                            <div class="metric-label">RISK SCORE</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-value" id="ws-success">--</div>
+                            <div class="metric-label">SUCCESS PROBABILITY</div>
+                        </div>
+                    </div>
+
+                    <div class="swot-grid" id="ws-swot">
+                        <div class="swot-item strengths">
+                            <h5>STRENGTHS</h5>
+                            <ul id="ws-strengths"></ul>
+                        </div>
+                        <div class="swot-item weaknesses">
+                            <h5>WEAKNESSES</h5>
+                            <ul id="ws-weaknesses"></ul>
+                        </div>
+                        <div class="swot-item opportunities">
+                            <h5>OPPORTUNITIES</h5>
+                            <ul id="ws-opportunities"></ul>
+                        </div>
+                        <div class="swot-item threats">
+                            <h5>THREATS</h5>
+                            <ul id="ws-threats"></ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sub2 Results -->
+                <div id="sub2-results" class="analysis-result">
+                    <div class="score-card">
+                        <div class="score-value" id="s2-dealScore">--</div>
+                        <div class="score-label">DEAL SCORE</div>
+                        <div class="grade" id="s2-grade">--</div>
+                    </div>
+
+                    <div class="recommendation" id="s2-recommendation">
+                        <h4 id="s2-action">--</h4>
+                        <p id="s2-message">--</p>
+                    </div>
+
+                    <div class="metrics-grid">
+                        <div class="metric-item">
+                            <div class="metric-value" id="s2-equity">--</div>
+                            <div class="metric-label">EQUITY POSITION</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-value" id="s2-cashflow">--</div>
+                            <div class="metric-label">MONTHLY CASHFLOW</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-value" id="s2-annual">--</div>
+                            <div class="metric-label">ANNUAL CASHFLOW</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-value" id="s2-coc">--</div>
+                            <div class="metric-label">CASH-ON-CASH RETURN</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-value" id="s2-risk">--</div>
+                            <div class="metric-label">RISK SCORE</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-value" id="s2-dos">--</div>
+                            <div class="metric-label">DUE-ON-SALE RISK</div>
+                        </div>
+                    </div>
+
+                    <h4 style="margin: 15px 0 10px;">Exit Strategies</h4>
+                    <div id="s2-exits"></div>
+                </div>
+
+                <!-- ARV Results -->
+                <div id="arv-results" class="analysis-result">
+                    <div class="score-card">
+                        <div class="score-value" id="arv-value">--</div>
+                        <div class="score-label">CALCULATED ARV</div>
+                        <div class="grade" id="arv-confidence">--</div>
+                    </div>
+
+                    <div class="metrics-grid">
+                        <div class="metric-item">
+                            <div class="metric-value" id="arv-low">--</div>
+                            <div class="metric-label">LOW ESTIMATE</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-value" id="arv-high">--</div>
+                            <div class="metric-label">HIGH ESTIMATE</div>
+                        </div>
+                    </div>
+
+                    <h4 style="margin: 15px 0 10px;">Comp Adjustments</h4>
+                    <div id="arv-adjustments"></div>
+                </div>
+
+                <!-- Repair Results -->
+                <div id="repairs-results" class="analysis-result">
+                    <div class="score-card">
+                        <div class="score-value" id="repair-total">--</div>
+                        <div class="score-label">TOTAL REPAIR ESTIMATE</div>
+                        <div class="grade" id="repair-confidence">--</div>
+                    </div>
+
+                    <div class="metrics-grid">
+                        <div class="metric-item">
+                            <div class="metric-value" id="repair-sqft">--</div>
+                            <div class="metric-label">COST PER SQ FT</div>
+                        </div>
+                    </div>
+
+                    <h4 style="margin: 15px 0 10px;">Cost Breakdown</h4>
+                    <div id="repair-breakdown"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api';
+        let compCount = 1;
+
+        // Tab switching
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelectorAll('.analysis-result').forEach(r => r.classList.remove('active'));
+
+            event.target.classList.add('active');
+            document.getElementById(`${tab}-form`).classList.add('active');
+            document.getElementById('analysisPlaceholder').style.display = 'block';
+        }
+
+        // Form handlers
+        document.getElementById('wholesaleForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData);
+
+            // Convert to numbers
+            Object.keys(data).forEach(key => {
+                if (!isNaN(data[key]) && data[key] !== '') data[key] = Number(data[key]);
+            });
+
+            await runAnalysis('wholesale', data);
+        });
+
+        document.getElementById('sub2Form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData);
+
+            Object.keys(data).forEach(key => {
+                if (!isNaN(data[key]) && data[key] !== '') data[key] = Number(data[key]);
+            });
+
+            await runAnalysis('sub2', data);
+        });
+
+        document.getElementById('arvForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData);
+
+            const property = {
+                squareFeet: Number(data.squareFeet),
+                bedrooms: Number(data.bedrooms),
+                bathrooms: Number(data.bathrooms),
+                yearBuilt: Number(data.yearBuilt),
+                conditionAfterRepair: Number(data.conditionAfterRepair) || 8
+            };
+
+            const comps = [];
+            for (let i = 1; i <= compCount; i++) {
+                if (data[`comp${i}_salePrice`]) {
+                    comps.push({
+                        salePrice: Number(data[`comp${i}_salePrice`]),
+                        squareFeet: Number(data[`comp${i}_squareFeet`]),
+                        bedrooms: Number(data[`comp${i}_bedrooms`]),
+                        bathrooms: Number(data[`comp${i}_bathrooms`])
+                    });
+                }
+            }
+
+            await runARVAnalysis(property, comps);
+        });
+
+        document.getElementById('repairsForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData);
+
+            Object.keys(data).forEach(key => {
+                if (key === 'foundationIssues') {
+                    data[key] = data[key] === 'true';
+                } else if (!isNaN(data[key]) && data[key] !== '') {
+                    data[key] = Number(data[key]);
+                }
+            });
+
+            await runRepairEstimate(data);
+        });
+
+        async function runAnalysis(type, data) {
+            showLoading(true);
+            try {
+                const response = await fetch(`${API_BASE}/analyze/${type}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+                if (result.success) {
+                    displayResults(type, result.data);
+                } else {
+                    alert('Analysis failed: ' + result.error);
+                }
+            } catch (error) {
+                alert('Error running analysis: ' + error.message);
+            }
+            showLoading(false);
+        }
+
+        async function runARVAnalysis(property, comps) {
+            showLoading(true);
+            try {
+                const response = await fetch(`${API_BASE}/analyze/arv`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ property, comps })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    displayARVResults(result.data);
+                } else {
+                    alert('ARV calculation failed: ' + result.error);
+                }
+            } catch (error) {
+                alert('Error calculating ARV: ' + error.message);
+            }
+            showLoading(false);
+        }
+
+        async function runRepairEstimate(data) {
+            showLoading(true);
+            try {
+                const response = await fetch(`${API_BASE}/analyze/repairs`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+                if (result.success) {
+                    displayRepairResults(result.data);
+                } else {
+                    alert('Repair estimate failed: ' + result.error);
+                }
+            } catch (error) {
+                alert('Error estimating repairs: ' + error.message);
+            }
+            showLoading(false);
+        }
+
+        function displayResults(type, data) {
+            document.getElementById('analysisPlaceholder').style.display = 'none';
+            document.querySelectorAll('.analysis-result').forEach(r => r.classList.remove('active'));
+
+            if (type === 'wholesale') {
+                document.getElementById('wholesale-results').classList.add('active');
+                document.getElementById('ws-dealScore').textContent = data.scores.dealScore;
+                document.getElementById('ws-grade').textContent = data.scores.grade;
+                document.getElementById('ws-grade').className = 'grade grade-' + data.scores.grade[0].toLowerCase();
+
+                document.getElementById('ws-mao').textContent = '$' + formatNumber(data.metrics.maxAllowableOffer);
+                document.getElementById('ws-equity').textContent = '$' + formatNumber(data.metrics.equitySpread);
+                document.getElementById('ws-fee').textContent = '$' + formatNumber(data.metrics.assignmentFeeEstimate);
+                document.getElementById('ws-roi').textContent = data.metrics.roi + '%';
+                document.getElementById('ws-risk').textContent = data.scores.riskScore;
+                document.getElementById('ws-success').textContent = data.scores.successProbability + '%';
+
+                const recEl = document.getElementById('ws-recommendation');
+                recEl.className = 'recommendation ' + data.recommendation.action.toLowerCase().replace(' ', '-');
+                document.getElementById('ws-action').textContent = data.recommendation.action;
+                document.getElementById('ws-message').textContent = data.recommendation.message;
+
+                renderList('ws-strengths', data.analysis.strengths);
+                renderList('ws-weaknesses', data.analysis.weaknesses);
+                renderList('ws-opportunities', data.analysis.opportunities);
+                renderList('ws-threats', data.analysis.threats);
+
+            } else if (type === 'sub2') {
+                document.getElementById('sub2-results').classList.add('active');
+                document.getElementById('s2-dealScore').textContent = data.scores.dealScore;
+                document.getElementById('s2-grade').textContent = data.scores.grade;
+                document.getElementById('s2-grade').className = 'grade grade-' + data.scores.grade[0].toLowerCase();
+
+                document.getElementById('s2-equity').textContent = '$' + formatNumber(data.metrics.equityPosition);
+                document.getElementById('s2-cashflow').textContent = '$' + formatNumber(data.metrics.monthlyCashflow);
+                document.getElementById('s2-annual').textContent = '$' + formatNumber(data.metrics.annualCashflow);
+                document.getElementById('s2-coc').textContent = data.metrics.cashOnCashReturn + '%';
+                document.getElementById('s2-risk').textContent = data.scores.riskScore;
+                document.getElementById('s2-dos').textContent = data.scores.dueOnSaleRisk.level.toUpperCase();
+
+                const recEl = document.getElementById('s2-recommendation');
+                recEl.className = 'recommendation ' + data.recommendation.action.toLowerCase().replace(' ', '-');
+                document.getElementById('s2-action').textContent = data.recommendation.action;
+                document.getElementById('s2-message').textContent = data.recommendation.message;
+
+                const exitsEl = document.getElementById('s2-exits');
+                exitsEl.innerHTML = data.analysis.exitStrategies.map(exit => `
+                    <div style="background: #f8f9fa; padding: 10px; border-radius: 8px; margin-bottom: 8px;">
+                        <strong>${exit.strategy}</strong> - Viability: ${exit.viability.toUpperCase()}
+                        <br><small style="color: #666;">${exit.notes}</small>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function displayARVResults(data) {
+            document.getElementById('analysisPlaceholder').style.display = 'none';
+            document.querySelectorAll('.analysis-result').forEach(r => r.classList.remove('active'));
+            document.getElementById('arv-results').classList.add('active');
+
+            document.getElementById('arv-value').textContent = '$' + formatNumber(data.arv);
+            document.getElementById('arv-confidence').textContent = data.confidence.toUpperCase() + ' CONFIDENCE';
+            document.getElementById('arv-confidence').className = 'grade grade-' + (data.confidence === 'high' ? 'a' : data.confidence === 'medium' ? 'b' : 'c');
+            document.getElementById('arv-low').textContent = '$' + formatNumber(data.valueRange?.low || data.arv * 0.95);
+            document.getElementById('arv-high').textContent = '$' + formatNumber(data.valueRange?.high || data.arv * 1.05);
+
+            const adjEl = document.getElementById('arv-adjustments');
+            if (data.adjustments && data.adjustments.length > 0) {
+                adjEl.innerHTML = data.adjustments.map(adj => `
+                    <div style="background: #f8f9fa; padding: 10px; border-radius: 8px; margin-bottom: 8px;">
+                        <strong>${adj.comp}</strong>: $${formatNumber(adj.originalPrice)} -> $${formatNumber(adj.adjustedPrice)}
+                        <br><small style="color: #666;">${adj.adjustments.map(a => `${a.factor}: ${a.adjustment >= 0 ? '+' : ''}$${formatNumber(a.adjustment)}`).join(', ')}</small>
+                    </div>
+                `).join('');
+            } else {
+                adjEl.innerHTML = '<p style="color: #999;">Add comparable sales to see adjustments</p>';
+            }
+        }
+
+        function displayRepairResults(data) {
+            document.getElementById('analysisPlaceholder').style.display = 'none';
+            document.querySelectorAll('.analysis-result').forEach(r => r.classList.remove('active'));
+            document.getElementById('repairs-results').classList.add('active');
+
+            document.getElementById('repair-total').textContent = '$' + formatNumber(data.totalEstimate);
+            document.getElementById('repair-confidence').textContent = data.confidence.toUpperCase() + ' CONFIDENCE';
+            document.getElementById('repair-sqft').textContent = '$' + data.perSquareFoot + '/sqft';
+
+            const breakdownEl = document.getElementById('repair-breakdown');
+            breakdownEl.innerHTML = data.breakdown.map(item => `
+                <div style="display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px solid #eee;">
+                    <span>${item.item}</span>
+                    <span><strong>$${formatNumber(item.cost)}</strong> <small style="color: #666;">${item.note}</small></span>
+                </div>
+            `).join('');
+        }
+
+        function renderList(elementId, items) {
+            const el = document.getElementById(elementId);
+            el.innerHTML = items.length > 0
+                ? items.map(item => `<li>${item}</li>`).join('')
+                : '<li>None identified</li>';
+        }
+
+        function showLoading(show) {
+            document.getElementById('loadingSpinner').classList.toggle('active', show);
+            if (show) document.getElementById('analysisPlaceholder').style.display = 'none';
+        }
+
+        function formatNumber(num) {
+            return Math.round(num).toLocaleString();
+        }
+
+        function addComp() {
+            if (compCount >= 5) {
+                alert('Maximum 5 comps allowed');
+                return;
+            }
+            compCount++;
+            const container = document.getElementById('comps-container');
+            const compHtml = `
+                <div class="comp-entry" style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
+                    <h4 style="margin-bottom: 10px;">Comp ${compCount}</h4>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Sale Price ($)</label>
+                            <input type="number" name="comp${compCount}_salePrice" placeholder="260000">
+                        </div>
+                        <div class="form-group">
+                            <label>Square Feet</label>
+                            <input type="number" name="comp${compCount}_squareFeet" placeholder="1750">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Bedrooms</label>
+                            <input type="number" name="comp${compCount}_bedrooms" placeholder="3">
+                        </div>
+                        <div class="form-group">
+                            <label>Bathrooms</label>
+                            <input type="number" name="comp${compCount}_bathrooms" placeholder="2">
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', compHtml);
+        }
+
+        async function saveProperty(type) {
+            const form = document.getElementById(type === 'wholesale' ? 'wholesaleForm' : 'sub2Form');
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData);
+
+            Object.keys(data).forEach(key => {
+                if (!isNaN(data[key]) && data[key] !== '') data[key] = Number(data[key]);
+            });
+
+            data.type = type === 'wholesale' ? 'Wholesaling' : 'Sub2';
+
+            try {
+                const response = await fetch(`${API_BASE}/properties`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+                if (result.success) {
+                    alert('Property saved successfully!');
+                    loadSavedProperties();
+                }
+            } catch (error) {
+                alert('Error saving property: ' + error.message);
+            }
+        }
+
+        async function loadSavedProperties() {
+            try {
+                const response = await fetch(`${API_BASE}/properties`);
+                const result = await response.json();
+                if (result.success && result.data.length > 0) {
+                    const listEl = document.getElementById('propertyList');
+                    listEl.innerHTML = result.data.slice(-10).reverse().map(p => `
+                        <div class="property-item" onclick="loadProperty('${p.id}')">
+                            <h4>${p.address || 'Unnamed Property'}</h4>
+                            <p>${p.type} | ARV: $${formatNumber(p.arv || 0)} | Created: ${new Date(p.createdAt).toLocaleDateString()}</p>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Error loading properties:', error);
+            }
+        }
+
+        async function loadProperty(id) {
+            try {
+                const response = await fetch(`${API_BASE}/properties/${id}`);
+                const result = await response.json();
+                if (result.success) {
+                    const p = result.data;
+                    const type = p.type === 'Wholesaling' ? 'wholesale' : 'sub2';
+                    switchTab(type);
+
+                    const form = document.getElementById(type === 'wholesale' ? 'wholesaleForm' : 'sub2Form');
+                    Object.keys(p).forEach(key => {
+                        const input = form.querySelector(`[name="${key}"]`);
+                        if (input) input.value = p[key];
+                    });
+                }
+            } catch (error) {
+                alert('Error loading property: ' + error.message);
+            }
+        }
+
+        // Initialize
+        loadSavedProperties();
+    </script>
+</body>
+</html>

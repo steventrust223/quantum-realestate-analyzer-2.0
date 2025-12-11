@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buyer & Seller Database - Quantum Real Estate Analyzer</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .nav-header {
+            background: white;
+            padding: 15px 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .nav-header h1 { color: #667eea; font-size: 1.5em; }
+        .back-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .tab {
+            padding: 12px 24px;
+            border: 2px solid white;
+            border-radius: 8px;
+            cursor: pointer;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            font-weight: 600;
+        }
+        .tab.active, .tab:hover { background: white; color: #667eea; }
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        .card h2 {
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .btn:hover { opacity: 0.9; }
+        .btn-secondary { background: #6c757d; }
+        .btn-success { background: #28a745; }
+        .btn-danger { background: #dc3545; }
+        .btn-sm { padding: 6px 12px; font-size: 12px; }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #667eea22 0%, #764ba222 100%);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .stat-value { font-size: 2em; font-weight: bold; color: #667eea; }
+        .stat-label { font-size: 12px; color: #666; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e0e0e0; }
+        th { background: #f8f9fa; font-weight: 600; }
+        tr:hover { background: #f8f9fa; }
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .status-active { background: #e8f5e9; color: #2e7d32; }
+        .status-inactive { background: #ffebee; color: #c62828; }
+        .status-vip { background: #fff3e0; color: #ef6c00; }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal.active { display: flex; }
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+        }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 600; color: #555; }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .filters {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .filters input, .filters select {
+            padding: 8px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+        }
+        .empty-state { text-align: center; padding: 40px; color: #999; }
+        .contact-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-left: 4px solid #667eea;
+        }
+        .contact-card.buyer { border-left-color: #4caf50; }
+        .contact-card.seller { border-left-color: #2196f3; }
+        .contact-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+        .contact-name { font-weight: 600; font-size: 1.1em; color: #333; }
+        .contact-details { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+        .contact-detail { font-size: 13px; color: #666; }
+        .contact-detail strong { color: #333; }
+        .tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
+        .tag {
+            background: #e3f2fd;
+            color: #1565c0;
+            padding: 3px 10px;
+            border-radius: 15px;
+            font-size: 11px;
+        }
+        .checkbox-group { display: flex; flex-wrap: wrap; gap: 10px; }
+        .checkbox-group label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-weight: normal;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="nav-header">
+            <h1>Buyer & Seller Database - CRM</h1>
+            <a href="control-center.html" class="back-btn">Back to Control Center</a>
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('buyers')">Buyers</div>
+            <div class="tab" onclick="switchTab('sellers')">Sellers</div>
+            <div class="tab" onclick="switchTab('import')">Import Contacts</div>
+        </div>
+
+        <!-- Buyers Tab -->
+        <div id="buyers-tab" class="tab-content active">
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2 style="margin: 0; border: none; padding: 0;">Cash Buyers Database</h2>
+                    <button class="btn" onclick="openModal('addBuyer')">+ Add Buyer</button>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalBuyers">0</div>
+                        <div class="stat-label">Total Buyers</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="activeBuyers">0</div>
+                        <div class="stat-label">Active</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="vipBuyers">0</div>
+                        <div class="stat-label">VIP Buyers</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="avgBudget">$0</div>
+                        <div class="stat-label">Avg Budget</div>
+                    </div>
+                </div>
+
+                <div class="filters">
+                    <input type="text" id="searchBuyers" placeholder="Search buyers..." onkeyup="filterBuyers()">
+                    <select id="buyerStatusFilter" onchange="loadBuyers()">
+                        <option value="">All Statuses</option>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="vip">VIP</option>
+                    </select>
+                    <select id="buyerTypeFilter" onchange="loadBuyers()">
+                        <option value="">All Types</option>
+                        <option value="cash">Cash Buyers</option>
+                        <option value="financed">Financed</option>
+                        <option value="investor">Investors</option>
+                    </select>
+                </div>
+
+                <div id="buyersList">
+                    <div class="empty-state">No buyers in database yet</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sellers Tab -->
+        <div id="sellers-tab" class="tab-content">
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2 style="margin: 0; border: none; padding: 0;">Motivated Sellers</h2>
+                    <button class="btn" onclick="openModal('addSeller')">+ Add Seller</button>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalSellers">0</div>
+                        <div class="stat-label">Total Sellers</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="activeSellers">0</div>
+                        <div class="stat-label">Active Leads</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="hotSellers">0</div>
+                        <div class="stat-label">Hot Leads</div>
+                    </div>
+                </div>
+
+                <div class="filters">
+                    <input type="text" id="searchSellers" placeholder="Search sellers..." onkeyup="filterSellers()">
+                    <select id="sellerStatusFilter" onchange="loadSellers()">
+                        <option value="">All Statuses</option>
+                        <option value="active">Active</option>
+                        <option value="contacted">Contacted</option>
+                        <option value="negotiating">Negotiating</option>
+                        <option value="closed">Closed</option>
+                    </select>
+                </div>
+
+                <div id="sellersList">
+                    <div class="empty-state">No sellers in database yet</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Import Tab -->
+        <div id="import-tab" class="tab-content">
+            <div class="card">
+                <h2>Import Contacts</h2>
+                <p style="color: #666; margin-bottom: 20px;">Import buyers or sellers from CSV format. Paste your data below.</p>
+
+                <div class="form-group">
+                    <label>Contact Type</label>
+                    <select id="importType">
+                        <option value="buyers">Buyers</option>
+                        <option value="sellers">Sellers</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>CSV Data (name, email, phone - one per line)</label>
+                    <textarea id="importData" rows="10" placeholder="John Doe, john@email.com, 555-123-4567&#10;Jane Smith, jane@email.com, 555-987-6543"></textarea>
+                </div>
+
+                <button class="btn" onclick="importContacts()">Import Contacts</button>
+
+                <div style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px;">
+                    <h4 style="margin-bottom: 10px;">CSV Format Guide</h4>
+                    <p style="font-size: 13px; color: #666;">
+                        <strong>Buyers:</strong> name, email, phone, maxPrice, preferredLocations<br>
+                        <strong>Sellers:</strong> name, email, phone, address, motivation (1-10)
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Buyer Modal -->
+    <div class="modal" id="addBuyerModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Add New Buyer</h3>
+                <button class="close-btn" onclick="closeModal('addBuyer')">&times;</button>
+            </div>
+            <form id="addBuyerForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Full Name *</label>
+                        <input type="text" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Company</label>
+                        <input type="text" name="company">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Email *</label>
+                        <input type="email" name="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Phone *</label>
+                        <input type="tel" name="phone" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Max Purchase Price ($)</label>
+                        <input type="number" name="maxPrice" placeholder="500000">
+                    </div>
+                    <div class="form-group">
+                        <label>Buyer Type</label>
+                        <select name="buyerType">
+                            <option value="cash">Cash Buyer</option>
+                            <option value="financed">Financed</option>
+                            <option value="investor">Investor</option>
+                            <option value="landlord">Landlord</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Preferred Locations (comma-separated)</label>
+                    <input type="text" name="preferredLocations" placeholder="Miami, Fort Lauderdale, West Palm Beach">
+                </div>
+                <div class="form-group">
+                    <label>Property Types (select all that apply)</label>
+                    <div class="checkbox-group">
+                        <label><input type="checkbox" name="preferredTypes" value="Single Family"> Single Family</label>
+                        <label><input type="checkbox" name="preferredTypes" value="Multi-Family"> Multi-Family</label>
+                        <label><input type="checkbox" name="preferredTypes" value="Condo"> Condo</label>
+                        <label><input type="checkbox" name="preferredTypes" value="Townhouse"> Townhouse</label>
+                        <label><input type="checkbox" name="preferredTypes" value="Land"> Land</label>
+                        <label><input type="checkbox" name="preferredTypes" value="Commercial"> Commercial</label>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select name="status">
+                            <option value="active">Active</option>
+                            <option value="vip">VIP</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Lead Source</label>
+                        <select name="source">
+                            <option value="website">Website</option>
+                            <option value="referral">Referral</option>
+                            <option value="networking">Networking</option>
+                            <option value="social">Social Media</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Notes</label>
+                    <textarea name="notes" rows="3"></textarea>
+                </div>
+                <button type="submit" class="btn">Add Buyer</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal('addBuyer')">Cancel</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Seller Modal -->
+    <div class="modal" id="addSellerModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Add New Seller</h3>
+                <button class="close-btn" onclick="closeModal('addSeller')">&times;</button>
+            </div>
+            <form id="addSellerForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Full Name *</label>
+                        <input type="text" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Phone *</label>
+                        <input type="tel" name="phone" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" name="email">
+                </div>
+                <div class="form-group">
+                    <label>Property Address *</label>
+                    <input type="text" name="propertyAddress" required placeholder="123 Main St, City, State ZIP">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Asking Price ($)</label>
+                        <input type="number" name="askingPrice" placeholder="200000">
+                    </div>
+                    <div class="form-group">
+                        <label>Motivation Level (1-10)</label>
+                        <input type="number" name="motivation" min="1" max="10" placeholder="7">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Situation</label>
+                    <select name="situation">
+                        <option value="behind_payments">Behind on Payments</option>
+                        <option value="divorce">Divorce</option>
+                        <option value="relocation">Relocation</option>
+                        <option value="inherited">Inherited Property</option>
+                        <option value="tired_landlord">Tired Landlord</option>
+                        <option value="probate">Probate</option>
+                        <option value="foreclosure">Pre-Foreclosure</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select name="status">
+                            <option value="active">Active Lead</option>
+                            <option value="contacted">Contacted</option>
+                            <option value="negotiating">Negotiating</option>
+                            <option value="not_interested">Not Interested</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Lead Source</label>
+                        <select name="source">
+                            <option value="direct_mail">Direct Mail</option>
+                            <option value="cold_call">Cold Call</option>
+                            <option value="driving">Driving for Dollars</option>
+                            <option value="online">Online</option>
+                            <option value="referral">Referral</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Notes</label>
+                    <textarea name="notes" rows="3"></textarea>
+                </div>
+                <button type="submit" class="btn">Add Seller</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal('addSeller')">Cancel</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api';
+        let allBuyers = [];
+        let allSellers = [];
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById(`${tab}-tab`).classList.add('active');
+
+            if (tab === 'buyers') loadBuyers();
+            else if (tab === 'sellers') loadSellers();
+        }
+
+        function openModal(type) {
+            document.getElementById(`${type}Modal`).classList.add('active');
+        }
+
+        function closeModal(type) {
+            document.getElementById(`${type}Modal`).classList.remove('active');
+        }
+
+        async function loadBuyers() {
+            const status = document.getElementById('buyerStatusFilter').value;
+            let url = `${API_BASE}/buyers`;
+            if (status) url += `?status=${status}`;
+
+            try {
+                const response = await fetch(url);
+                const result = await response.json();
+                if (result.success) {
+                    allBuyers = result.data;
+                    updateBuyerStats(allBuyers);
+                    renderBuyers(allBuyers);
+                }
+            } catch (error) {
+                console.error('Error loading buyers:', error);
+            }
+        }
+
+        function updateBuyerStats(buyers) {
+            document.getElementById('totalBuyers').textContent = buyers.length;
+            document.getElementById('activeBuyers').textContent = buyers.filter(b => b.status === 'active' || b.status === 'vip').length;
+            document.getElementById('vipBuyers').textContent = buyers.filter(b => b.status === 'vip').length;
+
+            const avgBudget = buyers.length > 0
+                ? buyers.reduce((sum, b) => sum + (b.maxPrice || 0), 0) / buyers.length
+                : 0;
+            document.getElementById('avgBudget').textContent = '$' + formatNumber(avgBudget);
+        }
+
+        function renderBuyers(buyers) {
+            const container = document.getElementById('buyersList');
+            if (buyers.length > 0) {
+                container.innerHTML = buyers.map(b => `
+                    <div class="contact-card buyer">
+                        <div class="contact-header">
+                            <div>
+                                <div class="contact-name">${b.name}</div>
+                                <small style="color: #666;">${b.company || ''}</small>
+                            </div>
+                            <div>
+                                <span class="status-badge status-${b.status}">${b.status?.toUpperCase()}</span>
+                                <button class="btn btn-sm btn-danger" style="margin-left: 10px;" onclick="deleteBuyer('${b.id}')">Delete</button>
+                            </div>
+                        </div>
+                        <div class="contact-details">
+                            <div class="contact-detail"><strong>Email:</strong> ${b.email}</div>
+                            <div class="contact-detail"><strong>Phone:</strong> ${b.phone}</div>
+                            <div class="contact-detail"><strong>Max Budget:</strong> $${formatNumber(b.maxPrice || 0)}</div>
+                            <div class="contact-detail"><strong>Type:</strong> ${b.buyerType || 'N/A'}</div>
+                        </div>
+                        ${b.preferredLocations ? `
+                        <div class="tags">
+                            ${(Array.isArray(b.preferredLocations) ? b.preferredLocations : b.preferredLocations.split(',')).map(loc => `<span class="tag">${loc.trim()}</span>`).join('')}
+                        </div>
+                        ` : ''}
+                        ${b.notes ? `<p style="margin-top: 10px; font-size: 12px; color: #666;"><em>${b.notes}</em></p>` : ''}
+                    </div>
+                `).join('');
+            } else {
+                container.innerHTML = '<div class="empty-state">No buyers found</div>';
+            }
+        }
+
+        function filterBuyers() {
+            const search = document.getElementById('searchBuyers').value.toLowerCase();
+            const filtered = allBuyers.filter(b =>
+                b.name.toLowerCase().includes(search) ||
+                (b.email || '').toLowerCase().includes(search) ||
+                (b.company || '').toLowerCase().includes(search)
+            );
+            renderBuyers(filtered);
+        }
+
+        async function loadSellers() {
+            try {
+                const response = await fetch(`${API_BASE}/sellers`);
+                const result = await response.json();
+                if (result.success) {
+                    allSellers = result.data;
+                    updateSellerStats(allSellers);
+                    renderSellers(allSellers);
+                }
+            } catch (error) {
+                console.error('Error loading sellers:', error);
+            }
+        }
+
+        function updateSellerStats(sellers) {
+            document.getElementById('totalSellers').textContent = sellers.length;
+            document.getElementById('activeSellers').textContent = sellers.filter(s => s.status === 'active').length;
+            document.getElementById('hotSellers').textContent = sellers.filter(s => s.motivation >= 8).length;
+        }
+
+        function renderSellers(sellers) {
+            const container = document.getElementById('sellersList');
+            if (sellers.length > 0) {
+                container.innerHTML = sellers.map(s => `
+                    <div class="contact-card seller">
+                        <div class="contact-header">
+                            <div>
+                                <div class="contact-name">${s.name}</div>
+                                <small style="color: #666;">${s.propertyAddress || ''}</small>
+                            </div>
+                            <div>
+                                <span class="status-badge status-${s.status}">${s.status?.toUpperCase()}</span>
+                                ${s.motivation >= 8 ? '<span class="status-badge" style="background: #ffebee; color: #c62828; margin-left: 5px;">HOT</span>' : ''}
+                                <button class="btn btn-sm btn-danger" style="margin-left: 10px;" onclick="deleteSeller('${s.id}')">Delete</button>
+                            </div>
+                        </div>
+                        <div class="contact-details">
+                            <div class="contact-detail"><strong>Phone:</strong> ${s.phone}</div>
+                            <div class="contact-detail"><strong>Email:</strong> ${s.email || 'N/A'}</div>
+                            <div class="contact-detail"><strong>Asking:</strong> $${formatNumber(s.askingPrice || 0)}</div>
+                            <div class="contact-detail"><strong>Motivation:</strong> ${s.motivation || 'N/A'}/10</div>
+                            <div class="contact-detail"><strong>Situation:</strong> ${(s.situation || '').replace('_', ' ')}</div>
+                            <div class="contact-detail"><strong>Source:</strong> ${(s.source || '').replace('_', ' ')}</div>
+                        </div>
+                        ${s.notes ? `<p style="margin-top: 10px; font-size: 12px; color: #666;"><em>${s.notes}</em></p>` : ''}
+                    </div>
+                `).join('');
+            } else {
+                container.innerHTML = '<div class="empty-state">No sellers found</div>';
+            }
+        }
+
+        function filterSellers() {
+            const search = document.getElementById('searchSellers').value.toLowerCase();
+            const filtered = allSellers.filter(s =>
+                s.name.toLowerCase().includes(search) ||
+                (s.propertyAddress || '').toLowerCase().includes(search) ||
+                (s.phone || '').includes(search)
+            );
+            renderSellers(filtered);
+        }
+
+        // Add Buyer
+        document.getElementById('addBuyerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const buyer = {};
+
+            formData.forEach((value, key) => {
+                if (key === 'preferredTypes') {
+                    if (!buyer.preferredTypes) buyer.preferredTypes = [];
+                    buyer.preferredTypes.push(value);
+                } else if (key === 'maxPrice') {
+                    buyer[key] = Number(value);
+                } else if (key === 'preferredLocations') {
+                    buyer[key] = value.split(',').map(l => l.trim());
+                } else {
+                    buyer[key] = value;
+                }
+            });
+
+            try {
+                const response = await fetch(`${API_BASE}/buyers`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(buyer)
+                });
+                const result = await response.json();
+                if (result.success) {
+                    alert('Buyer added successfully!');
+                    closeModal('addBuyer');
+                    e.target.reset();
+                    loadBuyers();
+                }
+            } catch (error) {
+                alert('Error adding buyer: ' + error.message);
+            }
+        });
+
+        // Add Seller
+        document.getElementById('addSellerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const seller = Object.fromEntries(formData);
+
+            if (seller.askingPrice) seller.askingPrice = Number(seller.askingPrice);
+            if (seller.motivation) seller.motivation = Number(seller.motivation);
+
+            try {
+                const response = await fetch(`${API_BASE}/sellers`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(seller)
+                });
+                const result = await response.json();
+                if (result.success) {
+                    alert('Seller added successfully!');
+                    closeModal('addSeller');
+                    e.target.reset();
+                    loadSellers();
+                }
+            } catch (error) {
+                alert('Error adding seller: ' + error.message);
+            }
+        });
+
+        async function deleteBuyer(id) {
+            if (!confirm('Delete this buyer?')) return;
+            try {
+                await fetch(`${API_BASE}/buyers/${id}`, { method: 'DELETE' });
+                loadBuyers();
+            } catch (error) {
+                alert('Error deleting buyer: ' + error.message);
+            }
+        }
+
+        async function deleteSeller(id) {
+            if (!confirm('Delete this seller?')) return;
+            try {
+                await fetch(`${API_BASE}/sellers/${id}`, { method: 'DELETE' });
+                loadSellers();
+            } catch (error) {
+                alert('Error deleting seller: ' + error.message);
+            }
+        }
+
+        async function importContacts() {
+            const type = document.getElementById('importType').value;
+            const data = document.getElementById('importData').value;
+
+            if (!data.trim()) {
+                alert('Please enter CSV data to import');
+                return;
+            }
+
+            const lines = data.trim().split('\n');
+            const contacts = lines.map(line => {
+                const parts = line.split(',').map(p => p.trim());
+                if (type === 'buyers') {
+                    return {
+                        name: parts[0],
+                        email: parts[1],
+                        phone: parts[2],
+                        maxPrice: Number(parts[3]) || 0,
+                        preferredLocations: parts[4] ? parts[4].split(';') : [],
+                        status: 'active'
+                    };
+                } else {
+                    return {
+                        name: parts[0],
+                        email: parts[1],
+                        phone: parts[2],
+                        propertyAddress: parts[3] || '',
+                        motivation: Number(parts[4]) || 5,
+                        status: 'active'
+                    };
+                }
+            });
+
+            try {
+                const response = await fetch(`${API_BASE}/import/${type}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ [type]: contacts })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    alert(`Successfully imported ${result.data.imported} ${type}!`);
+                    document.getElementById('importData').value = '';
+                    loadBuyers();
+                    loadSellers();
+                }
+            } catch (error) {
+                alert('Error importing: ' + error.message);
+            }
+        }
+
+        function formatNumber(num) {
+            return Math.round(num).toLocaleString();
+        }
+
+        // Initialize
+        loadBuyers();
+        loadSellers();
+    </script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+{
+  "name": "quantum-realestate-analyzer",
+  "version": "2.0.0",
+  "description": "Ultimate Wholesaling & Sub2 Real Estate Business Management System with Quantum Analysis",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "real-estate",
+    "wholesaling",
+    "sub2",
+    "property-analysis",
+    "crm",
+    "deal-management"
+  ],
+  "author": "Quantum Real Estate Solutions",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "uuid": "^9.0.0",
+    "cors": "^2.8.5"
+  }
+}
