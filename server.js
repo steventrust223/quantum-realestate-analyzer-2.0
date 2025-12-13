@@ -708,6 +708,200 @@ app.get('/api/export/deals', (req, res) => {
     }
 });
 
+// ============================================
+// SPEED-TO-LEAD API
+// ============================================
+
+// Get Speed-to-Lead Dashboard data
+app.get('/api/speed-to-lead/dashboard', (req, res) => {
+    try {
+        const dashboard = dataStore.getSpeedToLeadDashboard();
+        res.json({ success: true, data: dashboard });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Get urgent leads requiring immediate attention
+app.get('/api/speed-to-lead/urgent', (req, res) => {
+    try {
+        const urgentLeads = dataStore.getUrgentLeads();
+        res.json({ success: true, data: urgentLeads });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Get speed-to-lead metrics
+app.get('/api/speed-to-lead/metrics', (req, res) => {
+    try {
+        const metrics = dataStore.updateSpeedToLeadMetrics();
+        res.json({ success: true, data: metrics });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Record manual lead response
+app.post('/api/leads/:id/respond', (req, res) => {
+    try {
+        const lead = dataStore.respondToLead(req.params.id, req.body);
+        if (lead) {
+            res.json({ success: true, data: lead });
+        } else {
+            res.status(404).json({ success: false, error: 'Lead not found' });
+        }
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Send auto-response to lead
+app.post('/api/leads/:id/auto-respond', (req, res) => {
+    try {
+        const { templateId } = req.body;
+        const lead = dataStore.sendAutoResponse(req.params.id, templateId);
+        if (lead) {
+            res.json({ success: true, data: lead });
+        } else {
+            res.status(404).json({ success: false, error: 'Lead not found' });
+        }
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Update lead
+app.put('/api/leads/:id', (req, res) => {
+    try {
+        const lead = dataStore.updateLead(req.params.id, req.body);
+        if (lead) {
+            res.json({ success: true, data: lead });
+        } else {
+            res.status(404).json({ success: false, error: 'Lead not found' });
+        }
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Get single lead
+app.get('/api/leads/:id', (req, res) => {
+    try {
+        const marketing = dataStore.getMarketing();
+        const lead = marketing.leads.find(l => l.id === req.params.id);
+        if (lead) {
+            res.json({ success: true, data: lead });
+        } else {
+            res.status(404).json({ success: false, error: 'Lead not found' });
+        }
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Bulk auto-response to pending leads
+app.post('/api/speed-to-lead/bulk-respond', (req, res) => {
+    try {
+        const { templateId, maxLeads } = req.body;
+        const urgentLeads = dataStore.getUrgentLeads();
+        const leadsToRespond = urgentLeads.slice(0, maxLeads || 10);
+
+        const responses = leadsToRespond.map(lead => {
+            return dataStore.sendAutoResponse(lead.id, templateId);
+        }).filter(Boolean);
+
+        res.json({
+            success: true,
+            data: {
+                responded: responses.length,
+                leads: responses
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Get lead response templates for auto-response
+app.get('/api/speed-to-lead/templates', (req, res) => {
+    try {
+        const automation = dataStore.getAutomation();
+        const templates = automation.emailTemplates.filter(t =>
+            t.category === 'lead-response' || t.type === 'auto-response'
+        );
+        res.json({ success: true, data: templates });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Add lead response template
+app.post('/api/speed-to-lead/templates', (req, res) => {
+    try {
+        const template = {
+            ...req.body,
+            category: 'lead-response',
+            type: 'auto-response'
+        };
+        const automation = dataStore.getAutomation();
+        template.id = dataStore.generateId();
+        template.createdAt = new Date().toISOString();
+        automation.emailTemplates.push(template);
+        dataStore.write('automation.json', automation);
+        res.json({ success: true, data: template });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Get speed-to-lead settings
+app.get('/api/speed-to-lead/settings', (req, res) => {
+    try {
+        const settings = dataStore.getSettings();
+        const speedSettings = settings.speedToLead || {
+            enabled: true,
+            autoResponseEnabled: false,
+            defaultTemplateId: null,
+            alertThresholds: {
+                hot: 5,      // minutes
+                warm: 15,    // minutes
+                cooling: 30, // minutes
+                cold: 60     // minutes
+            },
+            notifications: {
+                email: true,
+                sms: false,
+                browser: true
+            },
+            workingHours: {
+                enabled: false,
+                start: '09:00',
+                end: '18:00',
+                timezone: 'America/New_York'
+            }
+        };
+        res.json({ success: true, data: speedSettings });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Update speed-to-lead settings
+app.put('/api/speed-to-lead/settings', (req, res) => {
+    try {
+        const settings = dataStore.getSettings();
+        settings.speedToLead = {
+            ...settings.speedToLead,
+            ...req.body
+        };
+        dataStore.updateSettings(settings);
+        res.json({ success: true, data: settings.speedToLead });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // Start server
 app.listen(PORT, () => {
     console.log(`

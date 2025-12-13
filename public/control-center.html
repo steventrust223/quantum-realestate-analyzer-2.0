@@ -292,6 +292,18 @@
                     <span id="buyerInfo">Loading...</span>
                 </p>
             </div>
+
+            <div class="card" style="background: linear-gradient(135deg, #ff6b6b22 0%, #ee5a2422 100%); border: 2px solid #ff6b6b44;">
+                <div class="card-header">
+                    <span class="card-icon">&#9889;</span>
+                    <h3 class="card-title">Speed-to-Lead</h3>
+                </div>
+                <div class="card-value" id="urgentLeads" style="color: #ff6b6b;">--</div>
+                <p class="card-description">
+                    <span class="status-indicator status-pending" id="leadIndicator"></span>
+                    <span id="leadInfo">Loading...</span>
+                </p>
+            </div>
         </div>
 
         <div class="action-panel">
@@ -318,6 +330,9 @@
                 <a href="automation.html" class="action-button">
                     &#9889; Automation Hub
                 </a>
+                <a href="speed-to-lead.html" class="action-button" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);">
+                    &#128293; Speed-to-Lead
+                </a>
                 <a href="settings.html" class="action-button">
                     &#9881; Settings
                 </a>
@@ -337,8 +352,13 @@
 
         async function loadDashboard() {
             try {
-                const response = await fetch(`${API_BASE}/dashboard`);
-                const result = await response.json();
+                const [dashboardRes, speedToLeadRes] = await Promise.all([
+                    fetch(`${API_BASE}/dashboard`),
+                    fetch(`${API_BASE}/speed-to-lead/urgent`)
+                ]);
+
+                const result = await dashboardRes.json();
+                const speedData = await speedToLeadRes.json();
 
                 if (result.success) {
                     const data = result.data;
@@ -361,6 +381,28 @@
                     // Load recent activity
                     loadRecentActivity(data.recentDeals || []);
                 }
+
+                // Update Speed-to-Lead card
+                if (speedData.success) {
+                    const urgentLeads = speedData.data || [];
+                    const hotLeads = urgentLeads.filter(l => l.urgency === 'hot').length;
+                    const pendingLeads = urgentLeads.length;
+
+                    document.getElementById('urgentLeads').textContent = pendingLeads;
+                    document.getElementById('urgentLeads').style.color = hotLeads > 0 ? '#ff6b6b' : pendingLeads > 0 ? '#ff9800' : '#4caf50';
+
+                    const indicator = document.getElementById('leadIndicator');
+                    if (hotLeads > 0) {
+                        indicator.className = 'status-indicator status-inactive';
+                        document.getElementById('leadInfo').textContent = `${hotLeads} HOT - Respond NOW!`;
+                    } else if (pendingLeads > 0) {
+                        indicator.className = 'status-indicator status-pending';
+                        document.getElementById('leadInfo').textContent = `${pendingLeads} leads awaiting response`;
+                    } else {
+                        indicator.className = 'status-indicator status-active';
+                        document.getElementById('leadInfo').textContent = 'All leads responded';
+                    }
+                }
             } catch (error) {
                 console.error('Error loading dashboard:', error);
                 // Show zeros on error
@@ -372,6 +414,8 @@
                 document.getElementById('pendingAnalysis').textContent = '0 pending tasks';
                 document.getElementById('activeBuyers').textContent = '0';
                 document.getElementById('buyerInfo').textContent = '0 active sellers';
+                document.getElementById('urgentLeads').textContent = '0';
+                document.getElementById('leadInfo').textContent = 'No pending leads';
                 loadRecentActivity([]);
             }
         }

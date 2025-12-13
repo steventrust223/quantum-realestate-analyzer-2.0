@@ -377,10 +377,252 @@ class DataStore {
         const data = this.read('marketing.json');
         lead.id = this.generateId();
         lead.createdAt = new Date().toISOString();
+        lead.receivedAt = new Date().toISOString(); // Speed to lead tracking
         lead.status = 'new';
+        lead.priority = this.calculateLeadPriority(lead);
+        lead.responseStatus = 'pending'; // pending, responded, expired
+        lead.firstResponseAt = null;
+        lead.responseTimeSeconds = null;
+        lead.autoResponseSent = false;
+        lead.touchpoints = [];
         data.leads.push(lead);
         this.write('marketing.json', data);
+
+        // Update speed-to-lead metrics
+        this.updateSpeedToLeadMetrics();
+
         return lead;
+    }
+
+    // Calculate lead priority based on various factors
+    calculateLeadPriority(lead) {
+        let score = 50; // Base score
+
+        // Motivation level increases priority
+        if (lead.motivation >= 8) score += 30;
+        else if (lead.motivation >= 6) score += 20;
+        else if (lead.motivation >= 4) score += 10;
+
+        // Property value affects priority
+        if (lead.estimatedValue >= 300000) score += 15;
+        else if (lead.estimatedValue >= 200000) score += 10;
+        else if (lead.estimatedValue >= 100000) score += 5;
+
+        // Lead source quality
+        const highValueSources = ['referral', 'direct_call', 'website_form'];
+        if (highValueSources.includes(lead.source)) score += 15;
+
+        // Hot keywords in notes
+        const hotKeywords = ['urgent', 'asap', 'foreclosure', 'divorce', 'relocating', 'behind', 'must sell'];
+        if (lead.notes) {
+            const notesLower = lead.notes.toLowerCase();
+            hotKeywords.forEach(keyword => {
+                if (notesLower.includes(keyword)) score += 10;
+            });
+        }
+
+        return Math.min(score, 100); // Cap at 100
+    }
+
+    // Respond to a lead and track response time
+    respondToLead(leadId, responseData) {
+        const data = this.read('marketing.json');
+        const index = data.leads.findIndex(l => l.id === leadId);
+
+        if (index !== -1) {
+            const lead = data.leads[index];
+            const now = new Date();
+            const receivedAt = new Date(lead.receivedAt);
+            const responseTimeSeconds = Math.floor((now - receivedAt) / 1000);
+
+            lead.firstResponseAt = lead.firstResponseAt || now.toISOString();
+            lead.responseTimeSeconds = lead.responseTimeSeconds || responseTimeSeconds;
+            lead.responseStatus = 'responded';
+            lead.status = responseData.newStatus || 'contacted';
+
+            // Add touchpoint
+            lead.touchpoints.push({
+                type: responseData.type || 'manual',
+                method: responseData.method || 'phone',
+                timestamp: now.toISOString(),
+                notes: responseData.notes || '',
+                responseTimeSeconds: responseTimeSeconds
+            });
+
+            data.leads[index] = lead;
+            this.write('marketing.json', data);
+            this.updateSpeedToLeadMetrics();
+
+            return lead;
+        }
+        return null;
+    }
+
+    // Send auto-response to lead
+    sendAutoResponse(leadId, templateId) {
+        const data = this.read('marketing.json');
+        const index = data.leads.findIndex(l => l.id === leadId);
+
+        if (index !== -1) {
+            const lead = data.leads[index];
+            const now = new Date();
+            const receivedAt = new Date(lead.receivedAt);
+            const responseTimeSeconds = Math.floor((now - receivedAt) / 1000);
+
+            lead.autoResponseSent = true;
+            lead.autoResponseAt = now.toISOString();
+            lead.autoResponseTemplate = templateId;
+
+            if (!lead.firstResponseAt) {
+                lead.firstResponseAt = now.toISOString();
+                lead.responseTimeSeconds = responseTimeSeconds;
+                lead.responseStatus = 'responded';
+            }
+
+            lead.touchpoints.push({
+                type: 'auto',
+                method: 'email',
+                timestamp: now.toISOString(),
+                notes: `Auto-response sent using template: ${templateId}`,
+                responseTimeSeconds: responseTimeSeconds
+            });
+
+            data.leads[index] = lead;
+            this.write('marketing.json', data);
+            this.updateSpeedToLeadMetrics();
+
+            return lead;
+        }
+        return null;
+    }
+
+    // Get leads requiring immediate attention
+    getUrgentLeads() {
+        const leads = this.read('marketing.json')?.leads || [];
+        const now = new Date();
+        const fiveMinutesAgo = new Date(now - 5 * 60 * 1000);
+        const thirtyMinutesAgo = new Date(now - 30 * 60 * 1000);
+
+        return leads
+            .filter(l => l.responseStatus === 'pending')
+            .map(lead => {
+                const receivedAt = new Date(lead.receivedAt);
+                const waitTimeSeconds = Math.floor((now - receivedAt) / 1000);
+                const waitTimeMinutes = Math.floor(waitTimeSeconds / 60);
+
+                let urgency = 'normal';
+                if (waitTimeMinutes < 5) urgency = 'hot';
+                else if (waitTimeMinutes < 15) urgency = 'warm';
+                else if (waitTimeMinutes < 30) urgency = 'cooling';
+                else urgency = 'cold';
+
+                return {
+                    ...lead,
+                    waitTimeSeconds,
+                    waitTimeMinutes,
+                    urgency,
+                    conversionProbability: this.calculateConversionProbability(waitTimeMinutes)
+                };
+            })
+            .sort((a, b) => {
+                // Sort by priority first, then by wait time
+                if (b.priority !== a.priority) return b.priority - a.priority;
+                return b.waitTimeSeconds - a.waitTimeSeconds;
+            });
+    }
+
+    // Calculate conversion probability based on response time
+    calculateConversionProbability(waitTimeMinutes) {
+        // Based on industry research: response within 5 min = 100x more likely to convert
+        if (waitTimeMinutes <= 1) return 95;
+        if (waitTimeMinutes <= 5) return 85;
+        if (waitTimeMinutes <= 10) return 70;
+        if (waitTimeMinutes <= 15) return 50;
+        if (waitTimeMinutes <= 30) return 30;
+        if (waitTimeMinutes <= 60) return 15;
+        return 5;
+    }
+
+    // Update speed-to-lead metrics
+    updateSpeedToLeadMetrics() {
+        const marketing = this.read('marketing.json');
+        const leads = marketing.leads || [];
+        const analytics = this.read('analytics.json');
+
+        const respondedLeads = leads.filter(l => l.responseTimeSeconds !== null);
+        const pendingLeads = leads.filter(l => l.responseStatus === 'pending');
+
+        // Calculate metrics
+        const avgResponseTime = respondedLeads.length > 0
+            ? respondedLeads.reduce((sum, l) => sum + l.responseTimeSeconds, 0) / respondedLeads.length
+            : 0;
+
+        const under5Min = respondedLeads.filter(l => l.responseTimeSeconds <= 300).length;
+        const under15Min = respondedLeads.filter(l => l.responseTimeSeconds <= 900).length;
+        const under30Min = respondedLeads.filter(l => l.responseTimeSeconds <= 1800).length;
+
+        analytics.speedToLead = {
+            totalLeads: leads.length,
+            respondedLeads: respondedLeads.length,
+            pendingLeads: pendingLeads.length,
+            avgResponseTimeSeconds: Math.round(avgResponseTime),
+            avgResponseTimeFormatted: this.formatTime(avgResponseTime),
+            responseRateUnder5Min: respondedLeads.length > 0 ? ((under5Min / respondedLeads.length) * 100).toFixed(1) : 0,
+            responseRateUnder15Min: respondedLeads.length > 0 ? ((under15Min / respondedLeads.length) * 100).toFixed(1) : 0,
+            responseRateUnder30Min: respondedLeads.length > 0 ? ((under30Min / respondedLeads.length) * 100).toFixed(1) : 0,
+            autoResponsesSent: leads.filter(l => l.autoResponseSent).length,
+            lastUpdated: new Date().toISOString()
+        };
+
+        this.write('analytics.json', analytics);
+        return analytics.speedToLead;
+    }
+
+    // Format seconds to human readable time
+    formatTime(seconds) {
+        if (seconds < 60) return `${Math.round(seconds)}s`;
+        if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${Math.round(seconds % 60)}s`;
+        return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
+    }
+
+    // Get speed-to-lead dashboard data
+    getSpeedToLeadDashboard() {
+        const metrics = this.updateSpeedToLeadMetrics();
+        const urgentLeads = this.getUrgentLeads();
+        const marketing = this.read('marketing.json');
+
+        // Recent responses
+        const recentResponses = (marketing.leads || [])
+            .filter(l => l.firstResponseAt)
+            .sort((a, b) => new Date(b.firstResponseAt) - new Date(a.firstResponseAt))
+            .slice(0, 10)
+            .map(l => ({
+                id: l.id,
+                name: l.name,
+                source: l.source,
+                responseTimeSeconds: l.responseTimeSeconds,
+                responseTimeFormatted: this.formatTime(l.responseTimeSeconds),
+                respondedAt: l.firstResponseAt,
+                wasAutoResponse: l.autoResponseSent
+            }));
+
+        return {
+            metrics,
+            urgentLeads: urgentLeads.slice(0, 20),
+            recentResponses,
+            timestamp: new Date().toISOString()
+        };
+    }
+
+    updateLead(id, updates) {
+        const data = this.read('marketing.json');
+        const index = data.leads.findIndex(l => l.id === id);
+        if (index !== -1) {
+            data.leads[index] = { ...data.leads[index], ...updates };
+            this.write('marketing.json', data);
+            return data.leads[index];
+        }
+        return null;
     }
 
     // Automation

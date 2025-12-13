@@ -224,10 +224,24 @@
 
         <!-- Leads Tab -->
         <div id="leads-tab" class="tab-content">
+            <!-- Speed-to-Lead Alert Banner -->
+            <div class="card" id="speedToLeadBanner" style="background: linear-gradient(135deg, #ff6b6b22 0%, #ee5a2422 100%); border: 2px solid #ff6b6b; display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h3 style="color: #ff6b6b; margin-bottom: 5px;"><span id="hotLeadIcon">&#128293;</span> <span id="speedAlertText">Hot Leads Waiting!</span></h3>
+                        <p style="color: #666; margin: 0;" id="speedAlertSubtext">Respond quickly to maximize conversion rates</p>
+                    </div>
+                    <a href="speed-to-lead.html" class="btn" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);">Open Speed-to-Lead Dashboard</a>
+                </div>
+            </div>
+
             <div class="card">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                     <h2 style="margin: 0; border: none; padding: 0;">Marketing Leads</h2>
-                    <button class="btn" onclick="openModal('addLead')">+ Add Lead</button>
+                    <div style="display: flex; gap: 10px;">
+                        <a href="speed-to-lead.html" class="btn btn-secondary" style="text-decoration: none;">&#9889; Speed-to-Lead</a>
+                        <button class="btn" onclick="openModal('addLead')">+ Add Lead</button>
+                    </div>
                 </div>
 
                 <div class="stats-grid">
@@ -246,6 +260,14 @@
                     <div class="stat-card">
                         <div class="stat-value" id="convertedLeads">0</div>
                         <div class="stat-label">Converted</div>
+                    </div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #ff6b6b22 0%, #ee5a2422 100%);">
+                        <div class="stat-value" id="avgResponseTime" style="color: #ff6b6b;">--</div>
+                        <div class="stat-label">Avg Response Time</div>
+                    </div>
+                    <div class="stat-card" style="background: linear-gradient(135deg, #ff6b6b22 0%, #ee5a2422 100%);">
+                        <div class="stat-value" id="pendingResponses" style="color: #ff6b6b;">0</div>
+                        <div class="stat-label">Pending Response</div>
                     </div>
                 </div>
 
@@ -437,8 +459,14 @@
 
         async function loadMarketing() {
             try {
-                const response = await fetch(`${API_BASE}/marketing`);
-                const result = await response.json();
+                const [marketingRes, speedRes] = await Promise.all([
+                    fetch(`${API_BASE}/marketing`),
+                    fetch(`${API_BASE}/speed-to-lead/dashboard`)
+                ]);
+
+                const result = await marketingRes.json();
+                const speedData = await speedRes.json();
+
                 if (result.success) {
                     const campaigns = result.data.campaigns || [];
                     const leads = result.data.leads || [];
@@ -464,9 +492,51 @@
                     select.innerHTML = '<option value="">No Campaign</option>' +
                         campaigns.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
                 }
+
+                // Update Speed-to-Lead stats
+                if (speedData.success) {
+                    const metrics = speedData.data.metrics || {};
+                    const avgTime = metrics.averageResponseTimeMinutes;
+
+                    // Avg response time
+                    if (avgTime !== undefined && avgTime !== null) {
+                        document.getElementById('avgResponseTime').textContent = formatResponseTime(avgTime);
+                    }
+
+                    // Pending responses
+                    const pending = metrics.pendingLeads || 0;
+                    document.getElementById('pendingResponses').textContent = pending;
+
+                    // Show/hide alert banner
+                    const banner = document.getElementById('speedToLeadBanner');
+                    const hotLeads = metrics.hotLeads || 0;
+                    if (pending > 0) {
+                        banner.style.display = 'block';
+                        if (hotLeads > 0) {
+                            document.getElementById('speedAlertText').textContent = `${hotLeads} HOT Lead${hotLeads > 1 ? 's' : ''} Need Response!`;
+                            document.getElementById('speedAlertSubtext').textContent = 'Respond within 5 minutes to maximize conversion rates';
+                        } else {
+                            document.getElementById('hotLeadIcon').innerHTML = '&#9889;';
+                            document.getElementById('speedAlertText').textContent = `${pending} Lead${pending > 1 ? 's' : ''} Awaiting Response`;
+                            document.getElementById('speedAlertSubtext').textContent = 'Quick response times improve conversion rates significantly';
+                            banner.style.borderColor = '#ff9800';
+                            banner.style.background = 'linear-gradient(135deg, #ff980022 0%, #f5750022 100%)';
+                        }
+                    } else {
+                        banner.style.display = 'none';
+                    }
+                }
             } catch (error) {
                 console.error('Error loading marketing:', error);
             }
+        }
+
+        function formatResponseTime(minutes) {
+            if (minutes < 1) return '<1m';
+            if (minutes < 60) return Math.round(minutes) + 'm';
+            const hours = Math.floor(minutes / 60);
+            const mins = Math.round(minutes % 60);
+            return hours + 'h ' + mins + 'm';
         }
 
         function renderCampaigns(campaigns) {
