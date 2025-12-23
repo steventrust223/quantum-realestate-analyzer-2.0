@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+      background: #f8f9fa;
+      color: #333;
+      font-size: 13px;
+    }
+
+    .sidebar-header {
+      background: linear-gradient(135deg, #1a73e8 0%, #0d47a1 100%);
+      color: white;
+      padding: 20px 15px;
+      text-align: center;
+    }
+
+    .sidebar-header h1 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 3px;
+    }
+
+    .sidebar-header p {
+      font-size: 11px;
+      opacity: 0.9;
+    }
+
+    .stats-row {
+      display: flex;
+      background: white;
+      border-bottom: 1px solid #eee;
+    }
+
+    .stat-item {
+      flex: 1;
+      text-align: center;
+      padding: 15px 10px;
+      border-right: 1px solid #eee;
+    }
+
+    .stat-item:last-child {
+      border-right: none;
+    }
+
+    .stat-value {
+      font-size: 22px;
+      font-weight: 700;
+      color: #1a73e8;
+    }
+
+    .stat-value.hot {
+      color: #ff4444;
+    }
+
+    .stat-label {
+      font-size: 10px;
+      color: #888;
+      text-transform: uppercase;
+      margin-top: 3px;
+    }
+
+    .section {
+      padding: 15px;
+      background: white;
+      margin-bottom: 10px;
+    }
+
+    .section-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: #888;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .action-card {
+      background: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%);
+      color: white;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+    }
+
+    .action-card.calm {
+      background: linear-gradient(135deg, #34a853 0%, #2d9249 100%);
+    }
+
+    .action-card .title {
+      font-size: 11px;
+      opacity: 0.9;
+      margin-bottom: 5px;
+    }
+
+    .action-card .action {
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .action-card .details {
+      font-size: 12px;
+      margin-top: 8px;
+      opacity: 0.9;
+    }
+
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 12px 15px;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 8px;
+      text-align: left;
+    }
+
+    .btn:last-child {
+      margin-bottom: 0;
+    }
+
+    .btn-primary {
+      background: #1a73e8;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #1557b0;
+    }
+
+    .btn-secondary {
+      background: #f1f3f4;
+      color: #333;
+    }
+
+    .btn-secondary:hover {
+      background: #e8eaed;
+    }
+
+    .btn-success {
+      background: #34a853;
+      color: white;
+    }
+
+    .btn-success:hover {
+      background: #2d9249;
+    }
+
+    .btn-icon {
+      display: inline-block;
+      width: 20px;
+      margin-right: 8px;
+      text-align: center;
+    }
+
+    .recent-list {
+      list-style: none;
+    }
+
+    .recent-item {
+      padding: 10px 0;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .recent-item:last-child {
+      border-bottom: none;
+    }
+
+    .recent-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      background: #e8f0fe;
+      color: #1a73e8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+
+    .recent-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .recent-address {
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .recent-meta {
+      font-size: 11px;
+      color: #888;
+    }
+
+    .status-indicator {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 5px;
+    }
+
+    .status-indicator.green {
+      background: #34a853;
+    }
+
+    .status-indicator.yellow {
+      background: #fbbc04;
+    }
+
+    .status-indicator.red {
+      background: #ea4335;
+    }
+
+    .system-status {
+      font-size: 12px;
+      padding: 8px 0;
+      display: flex;
+      align-items: center;
+    }
+
+    .footer {
+      padding: 15px;
+      text-align: center;
+      color: #888;
+      font-size: 11px;
+      border-top: 1px solid #eee;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 30px;
+      color: #888;
+    }
+
+    .spinner {
+      border: 2px solid #f3f3f3;
+      border-top: 2px solid #1a73e8;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 10px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+  <div class="sidebar-header">
+    <h1>Quantum Real Estate</h1>
+    <p>Quick Actions</p>
+  </div>
+
+  <div id="sidebar-content">
+    <div class="loading">
+      <div class="spinner"></div>
+      <p>Loading...</p>
+    </div>
+  </div>
+
+  <script>
+    let isProcessing = false;
+
+    function loadSidebar() {
+      google.script.run
+        .withSuccessHandler(renderSidebar)
+        .withFailureHandler(showError)
+        .getSidebarData();
+    }
+
+    function renderSidebar(data) {
+      const html = `
+        <!-- Stats Row -->
+        <div class="stats-row">
+          <div class="stat-item">
+            <div class="stat-value">${data.stats.total}</div>
+            <div class="stat-label">Deals</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value hot">${data.stats.hot}</div>
+            <div class="stat-label">HOT</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">${data.stats.newToday}</div>
+            <div class="stat-label">Today</div>
+          </div>
+        </div>
+
+        <!-- Next Action -->
+        ${data.nextAction ? `
+          <div class="section">
+            <div class="action-card ${data.nextAction.priority === 'LOW' ? 'calm' : ''}">
+              <div class="title">NEXT ACTION</div>
+              <div class="action">${data.nextAction.action}</div>
+              ${data.nextAction.deal ? `
+                <div class="details">${data.nextAction.deal.address || ''}</div>
+              ` : ''}
+            </div>
+          </div>
+        ` : ''}
+
+        <!-- Quick Actions -->
+        <div class="section">
+          <div class="section-title">Quick Actions</div>
+          <button class="btn btn-primary" onclick="runAction('import')" id="btn-import">
+            <span class="btn-icon">+</span> Import Leads
+          </button>
+          <button class="btn btn-primary" onclick="runAction('analyze')" id="btn-analyze">
+            <span class="btn-icon">*</span> Analyze New
+          </button>
+          <button class="btn btn-success" onclick="runAction('verdict')" id="btn-verdict">
+            <span class="btn-icon">#</span> Rebuild Verdict
+          </button>
+          <button class="btn btn-secondary" onclick="runAction('crm')" id="btn-crm">
+            <span class="btn-icon">></span> Sync to CRM
+          </button>
+        </div>
+
+        <!-- Recent Imports -->
+        ${data.recentImports && data.recentImports.length > 0 ? `
+          <div class="section">
+            <div class="section-title">Recent Imports</div>
+            <ul class="recent-list">
+              ${data.recentImports.slice(0, 3).map(lead => `
+                <li class="recent-item">
+                  <div class="recent-icon">H</div>
+                  <div class="recent-info">
+                    <div class="recent-address">${lead.address}</div>
+                    <div class="recent-meta">${lead.city}, ${lead.state} - ${lead.source}</div>
+                  </div>
+                </li>
+              `).join('')}
+            </ul>
+          </div>
+        ` : ''}
+
+        <!-- System Status -->
+        <div class="section">
+          <div class="section-title">System Status</div>
+          <div class="system-status">
+            <span class="status-indicator ${data.systemStatus.aiAvailable ? 'green' : 'yellow'}"></span>
+            AI: ${data.systemStatus.aiAvailable ? 'Connected' : 'Not configured'}
+          </div>
+          <div class="system-status">
+            <span class="status-indicator ${data.systemStatus.crmConfigured ? 'green' : 'yellow'}"></span>
+            CRM: ${data.systemStatus.crmConfigured ? 'Configured' : 'Not configured'}
+          </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="section">
+          <div class="section-title">Navigate</div>
+          <button class="btn btn-secondary" onclick="goToSheet('Deal Analyzer')">
+            <span class="btn-icon">@</span> Deal Analyzer
+          </button>
+          <button class="btn btn-secondary" onclick="goToSheet('Verdict')">
+            <span class="btn-icon">!</span> Verdict
+          </button>
+          <button class="btn btn-secondary" onclick="openDashboard()">
+            <span class="btn-icon">%</span> Dashboard
+          </button>
+        </div>
+
+        <div class="footer">
+          Quantum Real Estate Analyzer v2.0
+        </div>
+      `;
+
+      document.getElementById('sidebar-content').innerHTML = html;
+    }
+
+    function runAction(action) {
+      if (isProcessing) return;
+
+      isProcessing = true;
+      const btnId = 'btn-' + action;
+      const btn = document.getElementById(btnId);
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '<span class="btn-icon">...</span> Processing...';
+      btn.disabled = true;
+
+      let handler;
+      switch (action) {
+        case 'import':
+          handler = 'runImportFromUI';
+          break;
+        case 'analyze':
+          handler = 'runAnalysisFromUI';
+          break;
+        case 'verdict':
+          handler = 'runVerdictFromUI';
+          break;
+        case 'crm':
+          handler = 'runCrmSyncFromUI';
+          break;
+      }
+
+      google.script.run
+        .withSuccessHandler(result => {
+          isProcessing = false;
+          btn.innerHTML = originalText;
+          btn.disabled = false;
+
+          if (result.success) {
+            alert(result.message);
+            loadSidebar();
+          } else {
+            alert('Error: ' + result.message);
+          }
+        })
+        .withFailureHandler(err => {
+          isProcessing = false;
+          btn.innerHTML = originalText;
+          btn.disabled = false;
+          alert('Error: ' + err.message);
+        })
+        [handler]();
+    }
+
+    function goToSheet(sheetName) {
+      google.script.run.navigateToSheet(sheetName);
+    }
+
+    function openDashboard() {
+      google.script.run.showDashboard();
+    }
+
+    function showError(error) {
+      document.getElementById('sidebar-content').innerHTML = `
+        <div class="section">
+          <p style="color: #ea4335;">Error loading sidebar: ${error.message || error}</p>
+          <button class="btn btn-secondary" onclick="loadSidebar()" style="margin-top: 10px;">Retry</button>
+        </div>
+      `;
+    }
+
+    // Load sidebar on page ready
+    loadSidebar();
+  </script>
+</body>
+</html>

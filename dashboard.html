@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+      background: #f5f5f5;
+      color: #333;
+      padding: 20px;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #1a73e8 0%, #0d47a1 100%);
+      color: white;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header h1 {
+      font-size: 24px;
+      font-weight: 600;
+    }
+
+    .header .subtitle {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+
+    .refresh-btn {
+      background: rgba(255,255,255,0.2);
+      border: 1px solid rgba(255,255,255,0.3);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .refresh-btn:hover {
+      background: rgba(255,255,255,0.3);
+    }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .kpi-card {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+
+    .kpi-card .value {
+      font-size: 32px;
+      font-weight: 700;
+      color: #1a73e8;
+    }
+
+    .kpi-card .label {
+      font-size: 12px;
+      color: #666;
+      text-transform: uppercase;
+      margin-top: 5px;
+    }
+
+    .kpi-card.hot .value { color: #ff4444; }
+    .kpi-card.portfolio .value { color: #00C851; }
+    .kpi-card.solid .value { color: #33b5e5; }
+
+    .main-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 20px;
+    }
+
+    .panel {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+
+    .panel-header {
+      background: #fafafa;
+      padding: 15px 20px;
+      border-bottom: 1px solid #eee;
+      font-weight: 600;
+      font-size: 14px;
+      text-transform: uppercase;
+      color: #666;
+    }
+
+    .panel-body {
+      padding: 15px 20px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th, td {
+      padding: 10px 8px;
+      text-align: left;
+      border-bottom: 1px solid #eee;
+    }
+
+    th {
+      font-weight: 600;
+      color: #666;
+      font-size: 11px;
+      text-transform: uppercase;
+    }
+
+    tr:hover {
+      background: #f9f9f9;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .badge-hot { background: #ff4444; color: white; }
+    .badge-portfolio { background: #00C851; color: white; }
+    .badge-solid { background: #33b5e5; color: white; }
+    .badge-pass { background: #aaa; color: white; }
+
+    .chart-container {
+      height: 200px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-around;
+      padding: 20px;
+    }
+
+    .bar {
+      width: 60px;
+      background: linear-gradient(to top, #1a73e8, #4285f4);
+      border-radius: 4px 4px 0 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      color: white;
+      font-weight: 600;
+      padding-bottom: 8px;
+      transition: transform 0.2s;
+    }
+
+    .bar:hover {
+      transform: scaleY(1.05);
+    }
+
+    .bar-label {
+      font-size: 10px;
+      color: #666;
+      margin-top: 8px;
+      text-align: center;
+      max-width: 60px;
+      overflow: hidden;
+    }
+
+    .next-action {
+      background: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%);
+      color: white;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+
+    .next-action h3 {
+      font-size: 14px;
+      opacity: 0.9;
+      margin-bottom: 5px;
+    }
+
+    .next-action .action {
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .next-action .details {
+      font-size: 13px;
+      margin-top: 10px;
+      opacity: 0.9;
+    }
+
+    .action-btn {
+      background: rgba(255,255,255,0.2);
+      border: 1px solid rgba(255,255,255,0.3);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-top: 15px;
+      font-size: 13px;
+    }
+
+    .action-btn:hover {
+      background: rgba(255,255,255,0.3);
+    }
+
+    .pipeline-bar {
+      display: flex;
+      height: 30px;
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 15px 0;
+    }
+
+    .pipeline-segment {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 12px;
+      font-weight: 600;
+      transition: flex 0.3s;
+    }
+
+    .pipeline-hot { background: #ff4444; }
+    .pipeline-portfolio { background: #00C851; }
+    .pipeline-solid { background: #33b5e5; }
+
+    .pipeline-legend {
+      display: flex;
+      justify-content: space-around;
+      font-size: 12px;
+      color: #666;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #666;
+    }
+
+    .spinner {
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #1a73e8;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 15px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .footer {
+      text-align: center;
+      padding: 15px;
+      color: #999;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h1>Quantum Real Estate Analyzer</h1>
+      <div class="subtitle">Ultimate Edition v2.0 Dashboard</div>
+    </div>
+    <button class="refresh-btn" onclick="refreshDashboard()">Refresh Data</button>
+  </div>
+
+  <div id="dashboard-content">
+    <div class="loading">
+      <div class="spinner"></div>
+      <p>Loading dashboard data...</p>
+    </div>
+  </div>
+
+  <script>
+    let dashboardData = null;
+
+    function loadDashboard() {
+      google.script.run
+        .withSuccessHandler(renderDashboard)
+        .withFailureHandler(showError)
+        .getDashboardData();
+    }
+
+    function refreshDashboard() {
+      document.getElementById('dashboard-content').innerHTML = `
+        <div class="loading">
+          <div class="spinner"></div>
+          <p>Refreshing data...</p>
+        </div>
+      `;
+      loadDashboard();
+    }
+
+    function renderDashboard(data) {
+      dashboardData = data;
+
+      const content = `
+        <!-- Next Action Card -->
+        ${data.nextAction && data.nextAction.deal ? `
+          <div class="next-action">
+            <h3>NEXT BEST ACTION</h3>
+            <div class="action">${data.nextAction.action}</div>
+            <div class="details">
+              ${data.nextAction.deal.address || 'No specific deal'}<br>
+              ${data.nextAction.message}
+            </div>
+          </div>
+        ` : ''}
+
+        <!-- KPI Cards -->
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="value">${data.stats.totalDeals}</div>
+            <div class="label">Total Deals</div>
+          </div>
+          <div class="kpi-card hot">
+            <div class="value">${data.stats.hotDeals}</div>
+            <div class="label">HOT Deals</div>
+          </div>
+          <div class="kpi-card">
+            <div class="value">$${formatNumber(data.stats.avgSpread)}</div>
+            <div class="label">Avg Spread</div>
+          </div>
+          <div class="kpi-card">
+            <div class="value">$${formatNumber(data.pipeline.total)}</div>
+            <div class="label">Pipeline Value</div>
+          </div>
+        </div>
+
+        <!-- Pipeline Bar -->
+        <div class="panel" style="margin-bottom: 20px;">
+          <div class="panel-header">Pipeline Distribution</div>
+          <div class="panel-body">
+            <div class="pipeline-bar">
+              ${data.pipeline.hot > 0 ? `<div class="pipeline-segment pipeline-hot" style="flex: ${data.pipeline.hot}">$${formatNumber(data.pipeline.hot)}</div>` : ''}
+              ${data.pipeline.portfolio > 0 ? `<div class="pipeline-segment pipeline-portfolio" style="flex: ${data.pipeline.portfolio}">$${formatNumber(data.pipeline.portfolio)}</div>` : ''}
+              ${data.pipeline.solid > 0 ? `<div class="pipeline-segment pipeline-solid" style="flex: ${data.pipeline.solid}">$${formatNumber(data.pipeline.solid)}</div>` : ''}
+            </div>
+            <div class="pipeline-legend">
+              <div class="legend-item"><div class="legend-dot" style="background:#ff4444"></div> HOT ($${formatNumber(data.pipeline.hot)})</div>
+              <div class="legend-item"><div class="legend-dot" style="background:#00C851"></div> Portfolio ($${formatNumber(data.pipeline.portfolio)})</div>
+              <div class="legend-item"><div class="legend-dot" style="background:#33b5e5"></div> Solid ($${formatNumber(data.pipeline.solid)})</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Main Grid -->
+        <div class="main-grid">
+          <!-- Top Deals Table -->
+          <div class="panel">
+            <div class="panel-header">Top Ranked Deals</div>
+            <div class="panel-body" style="padding: 0;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Address</th>
+                    <th>Strategy</th>
+                    <th>Class</th>
+                    <th>Offer</th>
+                    <th>Spread</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${data.topDeals.map(deal => `
+                    <tr>
+                      <td>${deal.rank}</td>
+                      <td>${deal.address}, ${deal.city}</td>
+                      <td>${deal.strategy || '-'}</td>
+                      <td><span class="badge ${getBadgeClass(deal.classifier)}">${deal.classifier || '-'}</span></td>
+                      <td>$${formatNumber(deal.offerTarget)}</td>
+                      <td>$${formatNumber(deal.spread)}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Strategy Distribution -->
+          <div class="panel">
+            <div class="panel-header">Strategy Distribution</div>
+            <div class="panel-body">
+              <div class="chart-container">
+                ${Object.entries(data.strategyBreakdown).slice(0, 5).map(([strategy, count]) => `
+                  <div style="text-align: center;">
+                    <div class="bar" style="height: ${Math.max(20, count * 30)}px;">${count}</div>
+                    <div class="bar-label">${strategy.split(' ')[0]}</div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="footer">
+          Last Updated: ${new Date(data.lastUpdated).toLocaleString()}
+        </div>
+      `;
+
+      document.getElementById('dashboard-content').innerHTML = content;
+    }
+
+    function getBadgeClass(classifier) {
+      if (!classifier) return 'badge-pass';
+      if (classifier.includes('HOT')) return 'badge-hot';
+      if (classifier.includes('PORTFOLIO')) return 'badge-portfolio';
+      if (classifier.includes('SOLID')) return 'badge-solid';
+      return 'badge-pass';
+    }
+
+    function formatNumber(num) {
+      if (!num) return '0';
+      return Math.round(num).toLocaleString();
+    }
+
+    function showError(error) {
+      document.getElementById('dashboard-content').innerHTML = `
+        <div class="panel">
+          <div class="panel-body" style="text-align: center; color: #ea4335;">
+            <p>Error loading dashboard: ${error.message || error}</p>
+            <button onclick="loadDashboard()" style="margin-top: 15px; padding: 10px 20px;">Retry</button>
+          </div>
+        </div>
+      `;
+    }
+
+    // Load on page ready
+    loadDashboard();
+  </script>
+</body>
+</html>

@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+      background: #f5f5f5;
+      color: #333;
+      padding: 0;
+    }
+
+    .wizard-container {
+      max-width: 100%;
+      margin: 0 auto;
+    }
+
+    .wizard-header {
+      background: linear-gradient(135deg, #1a73e8 0%, #0d47a1 100%);
+      color: white;
+      padding: 25px 30px;
+      text-align: center;
+    }
+
+    .wizard-header h1 {
+      font-size: 22px;
+      font-weight: 600;
+      margin-bottom: 5px;
+    }
+
+    .wizard-header p {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+
+    .tabs {
+      display: flex;
+      background: #fff;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 15px;
+      text-align: center;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      color: #666;
+      border-bottom: 3px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .tab:hover {
+      background: #f9f9f9;
+    }
+
+    .tab.active {
+      color: #1a73e8;
+      border-bottom-color: #1a73e8;
+    }
+
+    .tab-content {
+      display: none;
+      padding: 25px 30px;
+      background: white;
+      min-height: 350px;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    h2 {
+      font-size: 18px;
+      margin-bottom: 20px;
+      color: #333;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 6px;
+      color: #555;
+    }
+
+    input[type="text"],
+    input[type="password"] {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+      transition: border-color 0.2s;
+    }
+
+    input[type="text"]:focus,
+    input[type="password"]:focus {
+      outline: none;
+      border-color: #1a73e8;
+    }
+
+    .hint {
+      font-size: 11px;
+      color: #888;
+      margin-top: 4px;
+    }
+
+    .status-list {
+      list-style: none;
+    }
+
+    .status-list li {
+      padding: 12px 15px;
+      border: 1px solid #eee;
+      border-radius: 4px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .status-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+
+    .status-icon.success {
+      background: #e8f5e9;
+      color: #4caf50;
+    }
+
+    .status-icon.warning {
+      background: #fff3e0;
+      color: #ff9800;
+    }
+
+    .status-icon.error {
+      background: #ffebee;
+      color: #f44336;
+    }
+
+    .toggle-group {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid #eee;
+    }
+
+    .toggle-group:last-child {
+      border-bottom: none;
+    }
+
+    .toggle-label {
+      font-size: 14px;
+    }
+
+    .toggle-desc {
+      font-size: 12px;
+      color: #888;
+    }
+
+    .toggle {
+      position: relative;
+      width: 50px;
+      height: 26px;
+    }
+
+    .toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: 0.3s;
+      border-radius: 26px;
+    }
+
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 20px;
+      width: 20px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: 0.3s;
+      border-radius: 50%;
+    }
+
+    .toggle input:checked + .toggle-slider {
+      background-color: #1a73e8;
+    }
+
+    .toggle input:checked + .toggle-slider:before {
+      transform: translateX(24px);
+    }
+
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: #1a73e8;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #1557b0;
+    }
+
+    .btn-secondary {
+      background: #f1f3f4;
+      color: #333;
+    }
+
+    .btn-secondary:hover {
+      background: #e8eaed;
+    }
+
+    .btn-success {
+      background: #34a853;
+      color: white;
+    }
+
+    .btn-success:hover {
+      background: #2d9249;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 25px;
+    }
+
+    .alert {
+      padding: 12px 15px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+
+    .alert-success {
+      background: #e8f5e9;
+      color: #2e7d32;
+      border: 1px solid #a5d6a7;
+    }
+
+    .alert-warning {
+      background: #fff3e0;
+      color: #e65100;
+      border: 1px solid #ffcc80;
+    }
+
+    .alert-error {
+      background: #ffebee;
+      color: #c62828;
+      border: 1px solid #ef9a9a;
+    }
+
+    .section {
+      margin-bottom: 30px;
+    }
+
+    .section-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #666;
+      text-transform: uppercase;
+      margin-bottom: 15px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #eee;
+    }
+
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255,255,255,0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      z-index: 1000;
+    }
+
+    .spinner {
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #1a73e8;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin-bottom: 15px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+  <div class="wizard-container">
+    <div class="wizard-header">
+      <h1>Setup Wizard</h1>
+      <p>Configure your Quantum Real Estate Analyzer</p>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" data-tab="status">Status</div>
+      <div class="tab" data-tab="api">API Keys</div>
+      <div class="tab" data-tab="features">Features</div>
+      <div class="tab" data-tab="setup">Setup</div>
+    </div>
+
+    <!-- Status Tab -->
+    <div id="status-tab" class="tab-content active">
+      <h2>System Status</h2>
+      <div id="status-content">
+        <div class="loading-inline">Loading status...</div>
+      </div>
+    </div>
+
+    <!-- API Keys Tab -->
+    <div id="api-tab" class="tab-content">
+      <h2>API Configuration</h2>
+
+      <div class="section">
+        <div class="section-title">AI Integration</div>
+        <div class="form-group">
+          <label for="openai-key">OpenAI API Key</label>
+          <input type="password" id="openai-key" placeholder="sk-...">
+          <div class="hint">Required for AI strategy recommendations and seller messaging</div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">CRM Integrations</div>
+        <div class="form-group">
+          <label for="smsit-key">SMS-iT API Key</label>
+          <input type="password" id="smsit-key" placeholder="Your SMS-iT API key">
+        </div>
+        <div class="form-group">
+          <label for="companyhub-key">CompanyHub API Key</label>
+          <input type="password" id="companyhub-key" placeholder="Your CompanyHub API key">
+        </div>
+        <div class="form-group">
+          <label for="onehash-key">OneHash API Key</label>
+          <input type="password" id="onehash-key" placeholder="Your OneHash API key">
+        </div>
+        <div class="form-group">
+          <label for="signwell-key">SignWell API Key</label>
+          <input type="password" id="signwell-key" placeholder="Your SignWell API key">
+        </div>
+      </div>
+
+      <div class="button-group">
+        <button class="btn btn-primary" onclick="saveApiKeys()">Save API Keys</button>
+        <button class="btn btn-secondary" onclick="testAI()">Test AI Connection</button>
+      </div>
+    </div>
+
+    <!-- Features Tab -->
+    <div id="features-tab" class="tab-content">
+      <h2>Feature Toggles</h2>
+
+      <div class="section">
+        <div class="section-title">Automation</div>
+
+        <div class="toggle-group">
+          <div>
+            <div class="toggle-label">Auto Import on New Rows</div>
+            <div class="toggle-desc">Automatically import leads when new rows are added to Import Hub</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="feature-auto-import" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="toggle-group">
+          <div>
+            <div class="toggle-label">Auto Analyze New Leads</div>
+            <div class="toggle-desc">Run analysis automatically after import</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="feature-auto-analyze" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="toggle-group">
+          <div>
+            <div class="toggle-label">Auto Update Verdict</div>
+            <div class="toggle-desc">Rebuild verdict rankings after analysis</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="feature-auto-verdict" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="toggle-group">
+          <div>
+            <div class="toggle-label">Auto CRM Sync for HOT Deals</div>
+            <div class="toggle-desc">Push HOT DEAL leads to CRM automatically</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="feature-auto-crm" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">AI Features</div>
+
+        <div class="toggle-group">
+          <div>
+            <div class="toggle-label">AI Strategy Recommendations</div>
+            <div class="toggle-desc">Use AI for strategy selection when ambiguous</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="feature-ai-strategy" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="toggle-group">
+          <div>
+            <div class="toggle-label">AI Repair Inference</div>
+            <div class="toggle-desc">Use AI to estimate repairs from descriptions</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="feature-ai-repair" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="toggle-group">
+          <div>
+            <div class="toggle-label">AI Seller Messaging</div>
+            <div class="toggle-desc">Generate personalized seller messages with AI</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="feature-ai-messaging" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="button-group">
+        <button class="btn btn-primary" onclick="saveFeatures()">Save Features</button>
+      </div>
+    </div>
+
+    <!-- Setup Tab -->
+    <div id="setup-tab" class="tab-content">
+      <h2>Initial Setup</h2>
+
+      <div class="alert alert-warning" id="setup-warning">
+        This will create all required sheets and configure the workbook.
+        Existing sheets with the same names will be preserved.
+      </div>
+
+      <div class="section">
+        <div class="section-title">Create Sheets</div>
+        <p style="margin-bottom: 15px; color: #666;">
+          The following sheets will be created:
+        </p>
+        <ul id="sheets-list" style="margin-left: 20px; color: #666; font-size: 14px; line-height: 2;">
+          <li>Import Hub</li>
+          <li>Leads Database</li>
+          <li>Deal Analyzer</li>
+          <li>Verdict</li>
+          <li>Buyers & Exit Options</li>
+          <li>Offers & Disposition</li>
+          <li>Repair Estimator</li>
+          <li>Market & ZIP Intelligence</li>
+          <li>CRM Sync Log</li>
+          <li>Automation Control Center</li>
+          <li>Dashboard</li>
+          <li>System Health</li>
+        </ul>
+      </div>
+
+      <div class="button-group">
+        <button class="btn btn-success" onclick="runSetup()">Run Setup</button>
+        <button class="btn btn-secondary" onclick="installTriggers()">Install Triggers</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="loading-overlay" class="loading-overlay hidden">
+    <div class="spinner"></div>
+    <p id="loading-message">Processing...</p>
+  </div>
+
+  <script>
+    // Tab switching
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+        tab.classList.add('active');
+        document.getElementById(tab.dataset.tab + '-tab').classList.add('active');
+      });
+    });
+
+    // Load initial data
+    function loadStatus() {
+      google.script.run
+        .withSuccessHandler(renderStatus)
+        .withFailureHandler(showError)
+        .getSetupWizardData();
+    }
+
+    function renderStatus(data) {
+      let html = '<ul class="status-list">';
+
+      // Sheets status
+      html += `
+        <li>
+          <div>
+            <strong>Sheets</strong>
+            <div style="font-size: 12px; color: #888;">
+              ${data.setup.sheetsReady ? 'All sheets created' : `Missing: ${data.setup.missingSheets.join(', ')}`}
+            </div>
+          </div>
+          <div class="status-icon ${data.setup.sheetsReady ? 'success' : 'warning'}">
+            ${data.setup.sheetsReady ? '✓' : '!'}
+          </div>
+        </li>
+      `;
+
+      // API status
+      html += `
+        <li>
+          <div>
+            <strong>OpenAI</strong>
+            <div style="font-size: 12px; color: #888;">
+              ${data.api.openai ? `Configured (${data.api.openai})` : 'Not configured'}
+            </div>
+          </div>
+          <div class="status-icon ${data.api.openai ? 'success' : 'warning'}">
+            ${data.api.openai ? '✓' : '!'}
+          </div>
+        </li>
+      `;
+
+      // CRM status
+      const crmConfigured = data.api.smsit || data.api.companyhub || data.api.onehash;
+      html += `
+        <li>
+          <div>
+            <strong>CRM Integrations</strong>
+            <div style="font-size: 12px; color: #888;">
+              ${crmConfigured ? 'At least one CRM configured' : 'No CRMs configured'}
+            </div>
+          </div>
+          <div class="status-icon ${crmConfigured ? 'success' : 'warning'}">
+            ${crmConfigured ? '✓' : '!'}
+          </div>
+        </li>
+      `;
+
+      // Triggers status
+      html += `
+        <li>
+          <div>
+            <strong>Triggers</strong>
+            <div style="font-size: 12px; color: #888;">
+              ${data.triggers.count} trigger(s) installed
+            </div>
+          </div>
+          <div class="status-icon ${data.triggers.count >= 3 ? 'success' : 'warning'}">
+            ${data.triggers.count >= 3 ? '✓' : '!'}
+          </div>
+        </li>
+      `;
+
+      html += '</ul>';
+
+      // Overall status message
+      if (data.setup.complete && data.api.openai) {
+        html += '<div class="alert alert-success">System is fully configured and ready to use!</div>';
+      } else {
+        html += '<div class="alert alert-warning">Setup incomplete. Complete the tabs above to configure.</div>';
+      }
+
+      document.getElementById('status-content').innerHTML = html;
+    }
+
+    function showLoading(message) {
+      document.getElementById('loading-message').textContent = message;
+      document.getElementById('loading-overlay').classList.remove('hidden');
+    }
+
+    function hideLoading() {
+      document.getElementById('loading-overlay').classList.add('hidden');
+    }
+
+    function saveApiKeys() {
+      showLoading('Saving API keys...');
+
+      const keys = {
+        openai: document.getElementById('openai-key').value,
+        smsit: document.getElementById('smsit-key').value,
+        companyhub: document.getElementById('companyhub-key').value,
+        onehash: document.getElementById('onehash-key').value,
+        signwell: document.getElementById('signwell-key').value
+      };
+
+      google.script.run
+        .withSuccessHandler(result => {
+          hideLoading();
+          if (result.success) {
+            alert('API keys saved successfully!');
+            loadStatus();
+          } else {
+            alert('Error: ' + result.message);
+          }
+        })
+        .withFailureHandler(err => {
+          hideLoading();
+          alert('Error: ' + err.message);
+        })
+        .saveApiKeys(keys);
+    }
+
+    function testAI() {
+      showLoading('Testing AI connection...');
+
+      google.script.run
+        .withSuccessHandler(result => {
+          hideLoading();
+          if (result.success) {
+            alert('AI connection successful!');
+          } else {
+            alert('AI connection failed: ' + result.message);
+          }
+        })
+        .withFailureHandler(err => {
+          hideLoading();
+          alert('Error: ' + err.message);
+        })
+        .testAIFromUI();
+    }
+
+    function saveFeatures() {
+      showLoading('Saving feature settings...');
+
+      const features = {
+        'Auto Import on New Rows': document.getElementById('feature-auto-import').checked,
+        'Auto Analyze New Leads': document.getElementById('feature-auto-analyze').checked,
+        'Auto Update Verdict': document.getElementById('feature-auto-verdict').checked,
+        'Auto CRM Sync for HOT Deals': document.getElementById('feature-auto-crm').checked,
+        'AI Strategy Recommendations': document.getElementById('feature-ai-strategy').checked,
+        'AI Repair Inference': document.getElementById('feature-ai-repair').checked,
+        'AI Seller Messaging': document.getElementById('feature-ai-messaging').checked
+      };
+
+      google.script.run
+        .withSuccessHandler(result => {
+          hideLoading();
+          if (result.success) {
+            alert('Feature settings saved!');
+          } else {
+            alert('Error: ' + result.message);
+          }
+        })
+        .withFailureHandler(err => {
+          hideLoading();
+          alert('Error: ' + err.message);
+        })
+        .saveWizardSettings({ features: features });
+    }
+
+    function runSetup() {
+      if (!confirm('This will create all required sheets. Continue?')) return;
+
+      showLoading('Running setup...');
+
+      google.script.run
+        .withSuccessHandler(result => {
+          hideLoading();
+          if (result.success) {
+            alert('Setup completed successfully!');
+            loadStatus();
+          } else {
+            alert('Setup error: ' + result.message);
+          }
+        })
+        .withFailureHandler(err => {
+          hideLoading();
+          alert('Error: ' + err.message);
+        })
+        .runSetupFromUI();
+    }
+
+    function installTriggers() {
+      showLoading('Installing triggers...');
+
+      google.script.run
+        .withSuccessHandler(() => {
+          hideLoading();
+          alert('Triggers installed successfully!');
+          loadStatus();
+        })
+        .withFailureHandler(err => {
+          hideLoading();
+          alert('Error: ' + err.message);
+        })
+        .ensureTriggers();
+    }
+
+    function showError(error) {
+      document.getElementById('status-content').innerHTML = `
+        <div class="alert alert-error">Error loading status: ${error.message || error}</div>
+      `;
+    }
+
+    // Load status on page load
+    loadStatus();
+  </script>
+</body>
+</html>
