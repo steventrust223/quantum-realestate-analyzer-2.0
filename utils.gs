@@ -1,12 +1,141 @@
 /**
  * ============================================================================
  * QUANTUM REAL ESTATE ANALYZER - ULTIMATE EDITION v2.0
- * Utility Functions (utils.gs)
+ * Utility Functions (utils.gs) - PRODUCTION PATCHED
  * ============================================================================
  *
  * Common utility functions used throughout the system.
  * Includes logging, validation, formatting, and helper functions.
+ *
+ * PATCH NOTES v2.0.1:
+ * - Added withLock() for concurrency protection
+ * - Added circuit breaker pattern functions
+ * - Added all missing functions (getDefaultSellerMessage, parseWebhookLead, etc.)
+ * - Added batch write functions for performance
+ * - Added safeParseJSON with fallbacks
+ * - Added retryWithBackoff for resilience
  */
+
+// =============================================================================
+// CIRCUIT BREAKER STATE
+// =============================================================================
+
+const CircuitBreakerState = {
+  _states: {},
+
+  getState: function(service) {
+    if (!this._states[service]) {
+      this._states[service] = {
+        failures: 0,
+        lastFailure: 0,
+        state: 'CLOSED'
+      };
+    }
+    return this._states[service];
+  },
+
+  recordSuccess: function(service) {
+    const state = this.getState(service);
+    state.failures = 0;
+    state.state = 'CLOSED';
+  },
+
+  recordFailure: function(service) {
+    const state = this.getState(service);
+    const config = CIRCUIT_BREAKER[service] || CIRCUIT_BREAKER.AI;
+
+    state.failures++;
+    state.lastFailure = Date.now();
+
+    if (state.failures >= config.FAILURE_THRESHOLD) {
+      state.state = 'OPEN';
+      logWarning('CircuitBreaker', `Circuit OPEN for ${service} after ${state.failures} failures`);
+    }
+  },
+
+  isOpen: function(service) {
+    const state = this.getState(service);
+    const config = CIRCUIT_BREAKER[service] || CIRCUIT_BREAKER.AI;
+
+    if (state.state === 'OPEN') {
+      const elapsed = Date.now() - state.lastFailure;
+      if (elapsed > config.RECOVERY_TIME_MS) {
+        state.state = 'HALF_OPEN';
+        logInfo('CircuitBreaker', `Circuit HALF_OPEN for ${service}, allowing test request`);
+        return false;
+      }
+      return true;
+    }
+    return false;
+  },
+
+  reset: function(service) {
+    this._states[service] = {
+      failures: 0,
+      lastFailure: 0,
+      state: 'CLOSED'
+    };
+  }
+};
+
+// =============================================================================
+// LOCK UTILITIES
+// =============================================================================
+
+/**
+ * Executes a function with a script lock
+ * @param {string} lockName - Name for logging
+ * @param {Function} fn - Function to execute
+ * @param {number} timeoutMs - Lock timeout in ms
+ * @returns {*} Result of function or throws
+ */
+function withLock(lockName, fn, timeoutMs = null) {
+  const timeout = timeoutMs || LOCK_CONFIG.TIMEOUT_MS;
+  const lock = LockService.getScriptLock();
+
+  try {
+    const acquired = lock.tryLock(timeout);
+
+    if (!acquired) {
+      logWarning('Lock', `Could not acquire lock for: ${lockName}`);
+      throw new Error(ERROR_MESSAGES.LOCK_TIMEOUT);
+    }
+
+    logInfo('Lock', `Acquired lock: ${lockName}`);
+    const result = fn();
+    return result;
+
+  } finally {
+    try {
+      lock.releaseLock();
+      logInfo('Lock', `Released lock: ${lockName}`);
+    } catch (e) {
+      // Lock may have timed out
+    }
+  }
+}
+
+/**
+ * Executes with document lock (for per-spreadsheet operations)
+ * @param {string} lockName - Name for logging
+ * @param {Function} fn - Function to execute
+ * @returns {*} Result of function
+ */
+function withDocumentLock(lockName, fn) {
+  const lock = LockService.getDocumentLock();
+
+  try {
+    const acquired = lock.tryLock(LOCK_CONFIG.TIMEOUT_MS);
+    if (!acquired) {
+      throw new Error(ERROR_MESSAGES.LOCK_TIMEOUT);
+    }
+    return fn();
+  } finally {
+    try {
+      lock.releaseLock();
+    } catch (e) {}
+  }
+}
 
 // =============================================================================
 // LOGGING UTILITIES
@@ -21,11 +150,15 @@
  */
 function logToSystem(component, status, message, metadata = {}) {
   try {
+    if (isStagingMode()) {
+      Logger.log(`[STAGING][${status}] ${component}: ${message}`);
+      return;
+    }
+
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     let sheet = ss.getSheetByName(SHEETS.SYSTEM_HEALTH);
 
     if (!sheet) {
-      Logger.log('System Health sheet not found, creating...');
       sheet = createSystemHealthSheet(ss);
     }
 
@@ -45,54 +178,26 @@ function logToSystem(component, status, message, metadata = {}) {
     ];
 
     sheet.appendRow(row);
-
-    // Also log to console for debugging
     Logger.log(`[${status}] ${component}: ${message}`);
-
-    // Keep only last 1000 rows to prevent bloat
     trimSheet(sheet, 1000);
   } catch (e) {
     Logger.log('Error logging to system: ' + e.message);
   }
 }
 
-/**
- * Logs an error with stack trace
- * @param {string} component - Component name
- * @param {Error} error - Error object
- * @param {string} context - Additional context
- */
 function logError(component, error, context = '') {
   const message = context ? `${context}: ${error.message}` : error.message;
-  logToSystem(component, 'ERROR', message, {
-    stack: error.stack,
-    errorCount: 1
-  });
+  logToSystem(component, 'ERROR', message, { stack: error.stack, errorCount: 1 });
 }
 
-/**
- * Logs a warning
- * @param {string} component - Component name
- * @param {string} message - Warning message
- */
 function logWarning(component, message) {
   logToSystem(component, 'WARNING', message, { warningCount: 1 });
 }
 
-/**
- * Logs an info message
- * @param {string} component - Component name
- * @param {string} message - Info message
- */
 function logInfo(component, message) {
   logToSystem(component, 'INFO', message);
 }
 
-/**
- * Logs a success message
- * @param {string} component - Component name
- * @param {string} message - Success message
- */
 function logSuccess(component, message) {
   logToSystem(component, 'SUCCESS', message);
 }
@@ -101,17 +206,15 @@ function logSuccess(component, message) {
 // SHEET UTILITIES
 // =============================================================================
 
-/**
- * Gets a sheet by name, creating it if it doesn't exist
- * @param {string} sheetName - Name of the sheet
- * @param {Array} headers - Optional headers for new sheet
- * @returns {Sheet} Google Sheet object
- */
 function getOrCreateSheet(sheetName, headers = null) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName(sheetName);
 
   if (!sheet) {
+    if (isStagingMode()) {
+      Logger.log(`[STAGING] Would create sheet: ${sheetName}`);
+      return null;
+    }
     sheet = ss.insertSheet(sheetName);
     if (headers && headers.length > 0) {
       sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
@@ -123,13 +226,11 @@ function getOrCreateSheet(sheetName, headers = null) {
   return sheet;
 }
 
-/**
- * Gets sheet data as array of objects
- * @param {string} sheetName - Name of the sheet
- * @param {boolean} includeEmpty - Include rows with empty first column
- * @returns {Array} Array of row objects with header keys
- */
 function getSheetDataAsObjects(sheetName, includeEmpty = false) {
+  const cacheKey = CACHE_CONFIG.PREFIX + 'SHEET_' + sheetName;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
   if (!sheet) {
     logWarning('Utils', `Sheet not found: ${sheetName}`);
@@ -149,33 +250,25 @@ function getSheetDataAsObjects(sheetName, includeEmpty = false) {
     for (let j = 0; j < headers.length; j++) {
       row[headers[j]] = data[i][j];
     }
-    row._rowIndex = i + 1; // 1-indexed for sheet reference
+    row._rowIndex = i + 1;
     rows.push(row);
   }
 
+  setCached(cacheKey, rows, CACHE_CONFIG.SHEET_DATA_TTL);
   return rows;
 }
 
-/**
- * Finds a row by a column value
- * @param {string} sheetName - Sheet name
- * @param {string} columnName - Column header name
- * @param {*} value - Value to find
- * @returns {Object|null} Row object or null
- */
 function findRowByColumn(sheetName, columnName, value) {
   const rows = getSheetDataAsObjects(sheetName);
   return rows.find(row => row[columnName] === value) || null;
 }
 
-/**
- * Updates a row by Lead ID
- * @param {string} sheetName - Sheet name
- * @param {string} leadId - Lead ID to find
- * @param {Object} updates - Object with column names and new values
- * @returns {boolean} Success status
- */
 function updateRowByLeadId(sheetName, leadId, updates) {
+  if (isStagingMode()) {
+    Logger.log(`[STAGING] Would update ${leadId} in ${sheetName}`);
+    return true;
+  }
+
   try {
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
     if (!sheet) return false;
@@ -194,6 +287,7 @@ function updateRowByLeadId(sheetName, leadId, updates) {
             sheet.getRange(i + 1, colIndex + 1).setValue(value);
           }
         }
+        clearCached(CACHE_CONFIG.PREFIX + 'SHEET_' + sheetName);
         return true;
       }
     }
@@ -204,24 +298,20 @@ function updateRowByLeadId(sheetName, leadId, updates) {
   }
 }
 
-/**
- * Trims a sheet to keep only the specified number of rows
- * @param {Sheet} sheet - Sheet object
- * @param {number} maxRows - Maximum rows to keep
- */
 function trimSheet(sheet, maxRows) {
   const lastRow = sheet.getLastRow();
-  if (lastRow > maxRows + 1) { // +1 for header
+  if (lastRow > maxRows + 1) {
     const rowsToDelete = lastRow - maxRows - 1;
     sheet.deleteRows(2, rowsToDelete);
   }
 }
 
-/**
- * Clears a sheet except for headers
- * @param {string} sheetName - Sheet name
- */
 function clearSheetData(sheetName) {
+  if (isStagingMode()) {
+    Logger.log(`[STAGING] Would clear sheet: ${sheetName}`);
+    return;
+  }
+
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
   if (!sheet) return;
 
@@ -229,17 +319,59 @@ function clearSheetData(sheetName) {
   if (lastRow > 1) {
     sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).clear();
   }
+  clearCached(CACHE_CONFIG.PREFIX + 'SHEET_' + sheetName);
+}
+
+/**
+ * Batch writes multiple rows to a sheet
+ * @param {string} sheetName - Sheet name
+ * @param {Array} rows - Array of row arrays
+ */
+function batchWriteRows(sheetName, rows) {
+  if (!rows || rows.length === 0) return;
+  if (isStagingMode()) {
+    Logger.log(`[STAGING] Would batch write ${rows.length} rows to ${sheetName}`);
+    return;
+  }
+
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
+  if (!sheet) return;
+
+  const lastRow = sheet.getLastRow();
+  sheet.getRange(lastRow + 1, 1, rows.length, rows[0].length).setValues(rows);
+  clearCached(CACHE_CONFIG.PREFIX + 'SHEET_' + sheetName);
+}
+
+/**
+ * Adds a lead to the database
+ * @param {Sheet} sheet - Leads Database sheet
+ * @param {Object} lead - Normalized lead object
+ */
+function addLeadToDatabase(sheet, lead) {
+  if (isStagingMode()) {
+    Logger.log(`[STAGING] Would add lead: ${lead.address}`);
+    return;
+  }
+
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const row = headers.map(header => {
+    const key = header.replace(/\s+/g, '').toLowerCase();
+    for (const [leadKey, value] of Object.entries(lead)) {
+      if (leadKey.toLowerCase().replace(/\s+/g, '') === key) {
+        return value;
+      }
+    }
+    return '';
+  });
+
+  sheet.appendRow(row);
+  clearCached(CACHE_CONFIG.PREFIX + 'SHEET_' + SHEETS.LEADS_DATABASE);
 }
 
 // =============================================================================
 // FORMATTING UTILITIES
 // =============================================================================
 
-/**
- * Formats header row with standard styling
- * @param {Sheet} sheet - Sheet object
- * @param {number} numColumns - Number of columns
- */
 function formatHeaders(sheet, numColumns) {
   const headerRange = sheet.getRange(1, 1, 1, numColumns);
   headerRange
@@ -247,41 +379,27 @@ function formatHeaders(sheet, numColumns) {
     .setFontColor(UI_CONFIG.COLORS.WHITE)
     .setFontWeight('bold')
     .setHorizontalAlignment('center');
-
   sheet.setFrozenRows(1);
 }
 
-/**
- * Applies alternating row colors (banding)
- * @param {Sheet} sheet - Sheet object
- */
 function applyBanding(sheet) {
   const lastRow = sheet.getLastRow();
   const lastCol = sheet.getLastColumn();
-
   if (lastRow < 2) return;
 
-  // Remove existing bandings
   const bandings = sheet.getBandings();
   bandings.forEach(b => b.remove());
 
-  // Apply new banding
   const range = sheet.getRange(1, 1, lastRow, lastCol);
   range.applyRowBanding(SpreadsheetApp.BandingTheme.LIGHT_GREY, true, false);
 }
 
-/**
- * Applies conditional formatting for deal classifiers
- * @param {Sheet} sheet - Sheet object
- * @param {number} column - Column number (1-indexed)
- */
 function applyDealClassifierFormatting(sheet, column) {
   const lastRow = Math.max(sheet.getLastRow(), 100);
   const range = sheet.getRange(2, column, lastRow - 1, 1);
 
   const rules = [];
 
-  // HOT DEAL - Red background
   rules.push(SpreadsheetApp.newConditionalFormatRule()
     .whenTextContains('HOT DEAL')
     .setBackground(UI_CONFIG.COLORS.HOT_DEAL)
@@ -289,7 +407,6 @@ function applyDealClassifierFormatting(sheet, column) {
     .setRanges([range])
     .build());
 
-  // PORTFOLIO FOUNDATION - Green background
   rules.push(SpreadsheetApp.newConditionalFormatRule()
     .whenTextContains('PORTFOLIO')
     .setBackground(UI_CONFIG.COLORS.PORTFOLIO)
@@ -297,7 +414,6 @@ function applyDealClassifierFormatting(sheet, column) {
     .setRanges([range])
     .build());
 
-  // SOLID DEAL - Blue background
   rules.push(SpreadsheetApp.newConditionalFormatRule()
     .whenTextContains('SOLID')
     .setBackground(UI_CONFIG.COLORS.SOLID_DEAL)
@@ -305,7 +421,6 @@ function applyDealClassifierFormatting(sheet, column) {
     .setRanges([range])
     .build());
 
-  // PASS - Grey background
   rules.push(SpreadsheetApp.newConditionalFormatRule()
     .whenTextContains('PASS')
     .setBackground(UI_CONFIG.COLORS.PASS)
@@ -317,45 +432,23 @@ function applyDealClassifierFormatting(sheet, column) {
   sheet.setConditionalFormatRules(existingRules.concat(rules));
 }
 
-/**
- * Formats currency values
- * @param {number} value - Numeric value
- * @returns {string} Formatted currency string
- */
 function formatCurrency(value) {
   if (!value || isNaN(value)) return '$0';
   return '$' + Math.round(value).toLocaleString('en-US');
 }
 
-/**
- * Formats percentage values
- * @param {number} value - Numeric value (0-100 or 0-1)
- * @param {boolean} isDecimal - Whether input is decimal (0-1)
- * @returns {string} Formatted percentage string
- */
 function formatPercent(value, isDecimal = false) {
   if (!value || isNaN(value)) return '0%';
   const pct = isDecimal ? value * 100 : value;
   return Math.round(pct) + '%';
 }
 
-/**
- * Formats a date for display
- * @param {Date} date - Date object
- * @returns {string} Formatted date string
- */
 function formatDate(date) {
   if (!date) return '';
   if (!(date instanceof Date)) date = new Date(date);
   return Utilities.formatDate(date, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm');
 }
 
-/**
- * Makes a URL clickable in sheets
- * @param {string} url - URL string
- * @param {string} label - Optional display label
- * @returns {string} HYPERLINK formula
- */
 function makeClickableUrl(url, label = null) {
   if (!url) return '';
   const displayLabel = label || url;
@@ -366,11 +459,6 @@ function makeClickableUrl(url, label = null) {
 // VALIDATION UTILITIES
 // =============================================================================
 
-/**
- * Checks if a value is empty
- * @param {*} value - Value to check
- * @returns {boolean} True if empty
- */
 function isEmpty(value) {
   return value === undefined ||
          value === null ||
@@ -378,71 +466,69 @@ function isEmpty(value) {
          (typeof value === 'string' && value.trim() === '');
 }
 
-/**
- * Checks if a value is a valid number
- * @param {*} value - Value to check
- * @returns {boolean} True if valid number
- */
 function isValidNumber(value) {
   return !isEmpty(value) && !isNaN(parseFloat(value)) && isFinite(value);
 }
 
-/**
- * Parses a number safely
- * @param {*} value - Value to parse
- * @param {number} defaultValue - Default if invalid
- * @returns {number} Parsed number or default
- */
 function safeParseNumber(value, defaultValue = 0) {
   if (isEmpty(value)) return defaultValue;
-
-  // Remove currency symbols and commas
   if (typeof value === 'string') {
     value = value.replace(/[$,]/g, '').trim();
   }
-
   const parsed = parseFloat(value);
   return isNaN(parsed) ? defaultValue : parsed;
 }
 
 /**
- * Validates an email address
- * @param {string} email - Email to validate
- * @returns {boolean} True if valid
+ * Safely parses JSON with fallback
+ * @param {string} jsonString - JSON string to parse
+ * @param {*} fallback - Fallback value if parsing fails
+ * @returns {*} Parsed object or fallback
  */
+function safeParseJSON(jsonString, fallback = null) {
+  if (!jsonString || typeof jsonString !== 'string') {
+    return fallback;
+  }
+
+  try {
+    // Try to extract JSON from potential markdown code blocks
+    let cleaned = jsonString.trim();
+    const jsonMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+    if (jsonMatch) {
+      cleaned = jsonMatch[1].trim();
+    }
+
+    // Try to find JSON object in text
+    const objectMatch = cleaned.match(/\{[\s\S]*\}/);
+    if (objectMatch) {
+      cleaned = objectMatch[0];
+    }
+
+    return JSON.parse(cleaned);
+  } catch (e) {
+    logWarning('Utils', `JSON parse failed: ${e.message}`);
+    return fallback;
+  }
+}
+
 function isValidEmail(email) {
   if (isEmpty(email)) return false;
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
 }
 
-/**
- * Validates a phone number (basic)
- * @param {string} phone - Phone to validate
- * @returns {boolean} True if valid
- */
 function isValidPhone(phone) {
   if (isEmpty(phone)) return false;
   const cleaned = phone.toString().replace(/\D/g, '');
   return cleaned.length >= 10 && cleaned.length <= 15;
 }
 
-/**
- * Validates a ZIP code
- * @param {string} zip - ZIP code to validate
- * @returns {boolean} True if valid
- */
 function isValidZip(zip) {
   if (isEmpty(zip)) return false;
   const zipRegex = /^\d{5}(-\d{4})?$/;
   return zipRegex.test(zip.toString());
 }
 
-/**
- * Normalizes condition text to standard format
- * @param {string} condition - Condition text
- * @returns {Object} Normalized condition and score
- */
 function normalizeCondition(condition) {
   if (isEmpty(condition)) {
     return { text: 'Unknown', score: 50 };
@@ -468,30 +554,49 @@ function normalizeCondition(condition) {
   return { text: condition, score: 50 };
 }
 
-/**
- * Normalizes occupancy status
- * @param {string} occupancy - Occupancy text
- * @returns {string} Normalized occupancy
- */
 function normalizeOccupancy(occupancy) {
   if (isEmpty(occupancy)) return 'Unknown';
-
   const occLower = occupancy.toString().toLowerCase();
-
   if (occLower.includes('vacant') || occLower.includes('empty')) return 'Vacant';
   if (occLower.includes('occupied') || occLower.includes('tenant') || occLower.includes('owner')) return 'Occupied';
-
   return 'Unknown';
+}
+
+/**
+ * Validates import data in Import Hub
+ * @returns {Object} Validation result
+ */
+function validateImportData() {
+  const importData = getSheetDataAsObjects(SHEETS.IMPORT_HUB);
+  const issues = [];
+  let validRows = 0;
+
+  for (const row of importData) {
+    if (row['Imported'] === true) continue;
+
+    const rowIssues = [];
+    if (isEmpty(row['Address'])) rowIssues.push('Missing address');
+    if (isEmpty(row['City'])) rowIssues.push('Missing city');
+    if (isEmpty(row['State'])) rowIssues.push('Missing state');
+
+    if (rowIssues.length === 0) {
+      validRows++;
+    } else {
+      issues.push(`Row ${row._rowIndex}: ${rowIssues.join(', ')}`);
+    }
+  }
+
+  return {
+    validRows,
+    issues,
+    total: importData.length
+  };
 }
 
 // =============================================================================
 // ID GENERATION
 // =============================================================================
 
-/**
- * Generates a unique Lead ID
- * @returns {string} Unique ID in format QRA-XXXXXXXX
- */
 function generateLeadId() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let id = 'QRA-';
@@ -501,10 +606,6 @@ function generateLeadId() {
   return id;
 }
 
-/**
- * Generates a unique Offer ID
- * @returns {string} Unique ID in format OFR-XXXXXXXX
- */
 function generateOfferId() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let id = 'OFR-';
@@ -514,10 +615,6 @@ function generateOfferId() {
   return id;
 }
 
-/**
- * Generates a unique Buyer ID
- * @returns {string} Unique ID in format BYR-XXXXXXXX
- */
 function generateBuyerId() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let id = 'BYR-';
@@ -531,102 +628,97 @@ function generateBuyerId() {
 // DATA TRANSFORMATION
 // =============================================================================
 
-/**
- * Cleans and normalizes an address
- * @param {string} address - Raw address
- * @returns {string} Cleaned address
- */
 function cleanAddress(address) {
   if (isEmpty(address)) return '';
-
-  return address
-    .toString()
-    .trim()
-    .replace(/\s+/g, ' ')
-    .replace(/[^\w\s,.-]/g, '');
+  return address.toString().trim().replace(/\s+/g, ' ').replace(/[^\w\s,.-]/g, '');
 }
 
-/**
- * Extracts ZIP code from address or returns provided ZIP
- * @param {string} address - Address string
- * @param {string} zip - Explicit ZIP if provided
- * @returns {string} ZIP code
- */
 function extractZip(address, zip = null) {
   if (zip && isValidZip(zip)) return zip.toString();
-
   if (!isEmpty(address)) {
     const zipMatch = address.toString().match(/\b\d{5}(-\d{4})?\b/);
     if (zipMatch) return zipMatch[0];
   }
-
   return '';
 }
 
-/**
- * Cleans phone number to E.164-ish format
- * @param {string} phone - Raw phone
- * @returns {string} Cleaned phone
- */
 function cleanPhone(phone) {
   if (isEmpty(phone)) return '';
-
   const cleaned = phone.toString().replace(/\D/g, '');
-
   if (cleaned.length === 10) {
     return '+1' + cleaned;
   } else if (cleaned.length === 11 && cleaned.startsWith('1')) {
     return '+' + cleaned;
   }
-
   return cleaned;
 }
 
-/**
- * Truncates text to specified length
- * @param {string} text - Text to truncate
- * @param {number} maxLength - Maximum length
- * @returns {string} Truncated text
- */
 function truncateText(text, maxLength = 160) {
   if (isEmpty(text)) return '';
   if (text.length <= maxLength) return text;
   return text.substring(0, maxLength - 3) + '...';
 }
 
+/**
+ * Parses webhook lead data into normalized format
+ * @param {Object} webhookData - Raw webhook data
+ * @returns {Object} Normalized lead
+ */
+function parseWebhookLead(webhookData) {
+  return {
+    address: webhookData.address || webhookData.property_address || '',
+    city: webhookData.city || '',
+    state: webhookData.state || '',
+    zip: webhookData.zip || webhookData.zipcode || '',
+    askingPrice: safeParseNumber(webhookData.price || webhookData.asking_price, 0),
+    beds: safeParseNumber(webhookData.beds || webhookData.bedrooms, 0),
+    baths: safeParseNumber(webhookData.baths || webhookData.bathrooms, 0),
+    sqft: safeParseNumber(webhookData.sqft || webhookData.square_feet, 0),
+    yearBuilt: safeParseNumber(webhookData.year_built || webhookData.yearBuilt, 0),
+    propertyType: webhookData.property_type || webhookData.type || 'Single Family',
+    condition: webhookData.condition || 'Unknown',
+    sellerName: webhookData.seller_name || webhookData.name || '',
+    sellerPhone: webhookData.seller_phone || webhookData.phone || '',
+    sellerEmail: webhookData.seller_email || webhookData.email || '',
+    motivation: webhookData.motivation || '',
+    notes: webhookData.notes || webhookData.description || '',
+    source: webhookData.source || 'Webhook'
+  };
+}
+
+/**
+ * Gets default seller message when AI is unavailable
+ * @param {Object} lead - Lead data
+ * @returns {Object} Message object
+ */
+function getDefaultSellerMessage(lead) {
+  const address = lead['Address'] || lead.address || 'your property';
+
+  return {
+    message: `Hi! I came across ${address} and would love to discuss it with you. I'm a local investor who can close quickly and make the process easy. Would you be open to a quick chat?`,
+    tone: 'Friendly',
+    callToAction: 'Quick chat'
+  };
+}
+
 // =============================================================================
 // ARRAY AND OBJECT UTILITIES
 // =============================================================================
 
-/**
- * Safely gets a nested object value
- * @param {Object} obj - Object to traverse
- * @param {string} path - Dot-notation path
- * @param {*} defaultValue - Default if not found
- * @returns {*} Value or default
- */
 function safeGet(obj, path, defaultValue = null) {
   try {
     const parts = path.split('.');
     let value = obj;
-
     for (const part of parts) {
       if (value === null || value === undefined) return defaultValue;
       value = value[part];
     }
-
     return value !== undefined ? value : defaultValue;
   } catch (e) {
     return defaultValue;
   }
 }
 
-/**
- * Removes duplicates from an array of objects by key
- * @param {Array} array - Array of objects
- * @param {string} key - Key to check for duplicates
- * @returns {Array} Deduplicated array
- */
 function deduplicateByKey(array, key) {
   const seen = new Set();
   return array.filter(item => {
@@ -637,13 +729,6 @@ function deduplicateByKey(array, key) {
   });
 }
 
-/**
- * Sorts an array of objects by a numeric key
- * @param {Array} array - Array to sort
- * @param {string} key - Key to sort by
- * @param {boolean} descending - Sort descending
- * @returns {Array} Sorted array
- */
 function sortByKey(array, key, descending = true) {
   return array.sort((a, b) => {
     const valA = safeParseNumber(a[key], 0);
@@ -657,12 +742,31 @@ function sortByKey(array, key, descending = true) {
 // =============================================================================
 
 /**
- * Makes a safe HTTP request with retry logic
- * @param {string} url - URL to request
- * @param {Object} options - UrlFetchApp options
- * @param {number} maxRetries - Maximum retry attempts
- * @returns {Object} Response object or null
+ * Retries a function with exponential backoff
+ * @param {Function} fn - Function to retry
+ * @param {number} maxRetries - Max retries
+ * @returns {*} Result or throws
  */
+function retryWithBackoff(fn, maxRetries = null) {
+  const retries = maxRetries || RETRY_CONFIG.MAX_RETRIES;
+  let lastError;
+
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      return fn();
+    } catch (e) {
+      lastError = e;
+      const delay = Math.min(
+        RETRY_CONFIG.BASE_DELAY_MS * Math.pow(RETRY_CONFIG.BACKOFF_MULTIPLIER, attempt),
+        RETRY_CONFIG.MAX_DELAY_MS
+      );
+      Utilities.sleep(delay);
+    }
+  }
+
+  throw lastError;
+}
+
 function safeFetch(url, options = {}, maxRetries = 3) {
   let lastError;
 
@@ -676,13 +780,13 @@ function safeFetch(url, options = {}, maxRetries = 3) {
       const code = response.getResponseCode();
 
       if (code >= 200 && code < 300) {
+        incrementApiCounter();
         return {
           success: true,
           code: code,
-          data: JSON.parse(response.getContentText())
+          data: safeParseJSON(response.getContentText(), {})
         };
       } else if (code === 429) {
-        // Rate limited - wait and retry
         Utilities.sleep(Math.pow(2, attempt) * 1000);
         continue;
       } else {
@@ -705,19 +809,11 @@ function safeFetch(url, options = {}, maxRetries = 3) {
   };
 }
 
-/**
- * Validates JSON response against expected schema
- * @param {Object} data - Data to validate
- * @param {Array} requiredFields - Required field names
- * @returns {boolean} True if valid
- */
 function validateJsonSchema(data, requiredFields) {
   if (!data || typeof data !== 'object') return false;
-
   for (const field of requiredFields) {
     if (!(field in data)) return false;
   }
-
   return true;
 }
 
@@ -725,49 +821,37 @@ function validateJsonSchema(data, requiredFields) {
 // CACHING UTILITIES
 // =============================================================================
 
-/**
- * Gets a cached value with optional expiry
- * @param {string} key - Cache key
- * @returns {*} Cached value or null
- */
 function getCached(key) {
-  const cache = CacheService.getScriptCache();
-  const value = cache.get(key);
-  return value ? JSON.parse(value) : null;
+  try {
+    const cache = CacheService.getScriptCache();
+    const value = cache.get(key);
+    return value ? JSON.parse(value) : null;
+  } catch (e) {
+    return null;
+  }
 }
 
-/**
- * Sets a cached value
- * @param {string} key - Cache key
- * @param {*} value - Value to cache
- * @param {number} ttlSeconds - Time to live in seconds (default 6 hours)
- */
-function setCached(key, value, ttlSeconds = 21600) {
-  const cache = CacheService.getScriptCache();
-  cache.put(key, JSON.stringify(value), ttlSeconds);
+function setCached(key, value, ttlSeconds = null) {
+  try {
+    const ttl = ttlSeconds || CACHE_CONFIG.DEFAULT_TTL;
+    const cache = CacheService.getScriptCache();
+    cache.put(key, JSON.stringify(value), ttl);
+  } catch (e) {
+    // Cache failure is non-critical
+  }
 }
 
-/**
- * Clears a cached value
- * @param {string} key - Cache key
- */
 function clearCached(key) {
-  const cache = CacheService.getScriptCache();
-  cache.remove(key);
+  try {
+    const cache = CacheService.getScriptCache();
+    cache.remove(key);
+  } catch (e) {}
 }
 
 // =============================================================================
 // BATCH PROCESSING
 // =============================================================================
 
-/**
- * Processes items in batches with delay
- * @param {Array} items - Items to process
- * @param {Function} processor - Function to process each item
- * @param {number} batchSize - Items per batch
- * @param {number} delayMs - Delay between batches
- * @returns {Array} Results
- */
 function processBatch(items, processor, batchSize = 50, delayMs = 1000) {
   const results = [];
 
@@ -792,13 +876,110 @@ function processBatch(items, processor, batchSize = 50, delayMs = 1000) {
 }
 
 // =============================================================================
-// SYSTEM UTILITIES
+// IMPORT STATISTICS
 // =============================================================================
 
 /**
- * Gets the current execution quota usage
- * @returns {Object} Quota information
+ * Gets import statistics
+ * @returns {Object} Import stats
  */
+function getImportStats() {
+  const leads = getSheetDataAsObjects(SHEETS.LEADS_DATABASE);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  let todayCount = 0;
+  let weekCount = 0;
+  const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+  for (const lead of leads) {
+    const imported = lead['Timestamp Imported'] || lead['Import Date'];
+    if (imported) {
+      const date = new Date(imported);
+      if (date >= today) todayCount++;
+      if (date >= weekAgo) weekCount++;
+    }
+  }
+
+  return {
+    total: leads.length,
+    today: todayCount,
+    thisWeek: weekCount
+  };
+}
+
+/**
+ * Gets recent imports
+ * @param {number} limit - Number to return
+ * @returns {Array} Recent imports
+ */
+function getRecentImports(limit = 5) {
+  const leads = getSheetDataAsObjects(SHEETS.LEADS_DATABASE);
+  return leads.slice(-limit).reverse().map(lead => ({
+    leadId: lead['Lead ID'],
+    address: lead['Address'],
+    city: lead['City'],
+    state: lead['State'],
+    source: lead['Source Platform'] || lead['Lead Source'] || 'Unknown',
+    date: lead['Timestamp Imported']
+  }));
+}
+
+/**
+ * Exports verdict summary for reports
+ * @returns {Object} Summary data
+ */
+function exportVerdictSummary() {
+  const verdictData = getSheetDataAsObjects(SHEETS.VERDICT);
+  const stats = getVerdictStats();
+
+  return {
+    summary: {
+      totalDeals: stats.totalDeals,
+      hotDeals: stats.hotDeals,
+      avgSpread: formatCurrency(stats.avgSpread),
+      totalPipelineValue: formatCurrency(stats.totalPipeline || 0)
+    },
+    topDeals: verdictData.slice(0, 10).map(deal => ({
+      rank: deal['Rank'],
+      address: deal['Address'],
+      strategy: deal['Strategy'],
+      classifier: deal['Deal Classifier'],
+      offerTarget: formatCurrency(deal['Offer Target']),
+      spread: formatCurrency(deal['Profit/Spread'])
+    })),
+    exportDate: new Date().toISOString()
+  };
+}
+
+// =============================================================================
+// AI STATUS
+// =============================================================================
+
+/**
+ * Gets AI service status
+ * @returns {Object} AI status
+ */
+function getAIStatus() {
+  const apiKey = getApiKey('openai');
+  const circuitOpen = CircuitBreakerState.isOpen('AI');
+
+  return {
+    available: !isEmpty(apiKey) && !circuitOpen,
+    configured: !isEmpty(apiKey),
+    circuitOpen: circuitOpen,
+    features: {
+      strategyRecommendations: isFeatureEnabled('AI Strategy Recommendations'),
+      repairInference: isFeatureEnabled('AI Repair Inference'),
+      sellerMessaging: isFeatureEnabled('AI Seller Messaging')
+    }
+  };
+}
+
+// =============================================================================
+// SYSTEM UTILITIES
+// =============================================================================
+
 function getQuotaInfo() {
   const properties = PropertiesService.getScriptProperties();
   const daily = properties.getProperty('DAILY_API_CALLS') || '0';
@@ -807,13 +988,10 @@ function getQuotaInfo() {
   return {
     dailyCalls: parseInt(daily, 10),
     lastReset: lastReset,
-    estimatedRemaining: 10000 - parseInt(daily, 10) // Rough estimate
+    estimatedRemaining: 10000 - parseInt(daily, 10)
   };
 }
 
-/**
- * Increments the API call counter
- */
 function incrementApiCounter() {
   const properties = PropertiesService.getScriptProperties();
   const today = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
@@ -828,11 +1006,6 @@ function incrementApiCounter() {
   }
 }
 
-/**
- * Creates a System Health sheet if it doesn't exist
- * @param {Spreadsheet} ss - Spreadsheet object
- * @returns {Sheet} Created sheet
- */
 function createSystemHealthSheet(ss) {
   const sheet = ss.insertSheet(SHEETS.SYSTEM_HEALTH);
   sheet.getRange(1, 1, 1, COLUMNS.SYSTEM_HEALTH.length).setValues([COLUMNS.SYSTEM_HEALTH]);
@@ -840,37 +1013,93 @@ function createSystemHealthSheet(ss) {
   return sheet;
 }
 
-/**
- * Shows a toast notification
- * @param {string} message - Message to show
- * @param {string} title - Toast title
- * @param {number} duration - Duration in seconds
- */
 function showToast(message, title = 'Quantum Real Estate', duration = 5) {
   SpreadsheetApp.getActiveSpreadsheet().toast(message, title, duration);
 }
 
-/**
- * Shows an alert dialog
- * @param {string} message - Message to show
- * @param {string} title - Alert title
- */
 function showAlert(message, title = 'Quantum Real Estate') {
   SpreadsheetApp.getUi().alert(title, message, SpreadsheetApp.getUi().ButtonSet.OK);
 }
 
-/**
- * Gets the active spreadsheet name
- * @returns {string} Spreadsheet name
- */
 function getSpreadsheetName() {
   return SpreadsheetApp.getActiveSpreadsheet().getName();
 }
 
-/**
- * Gets the spreadsheet URL
- * @returns {string} Spreadsheet URL
- */
 function getSpreadsheetUrl() {
   return SpreadsheetApp.getActiveSpreadsheet().getUrl();
+}
+
+/**
+ * Checks if a feature is enabled in Automation Control
+ * @param {string} featureName - Feature name
+ * @returns {boolean} True if enabled
+ */
+function isFeatureEnabled(featureName) {
+  try {
+    const controlData = getSheetDataAsObjects(SHEETS.AUTOMATION_CONTROL);
+    const feature = controlData.find(row => row['Feature'] === featureName);
+    return feature ? feature['Enabled'] === true : true;
+  } catch (e) {
+    return true;
+  }
+}
+
+/**
+ * Runs smoke tests to verify system health
+ * @returns {Object} Test results
+ */
+function runSmokeTests() {
+  const results = {
+    passed: 0,
+    failed: 0,
+    tests: []
+  };
+
+  // Test 1: Sheets exist
+  const requiredSheets = Object.values(SHEETS);
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  for (const sheetName of requiredSheets) {
+    const exists = ss.getSheetByName(sheetName) !== null;
+    results.tests.push({
+      name: `Sheet exists: ${sheetName}`,
+      passed: exists
+    });
+    exists ? results.passed++ : results.failed++;
+  }
+
+  // Test 2: Config accessible
+  try {
+    const version = CONFIG.VERSION;
+    results.tests.push({ name: 'Config accessible', passed: true });
+    results.passed++;
+  } catch (e) {
+    results.tests.push({ name: 'Config accessible', passed: false, error: e.message });
+    results.failed++;
+  }
+
+  // Test 3: Cache working
+  try {
+    setCached('smoke_test', { test: true }, 60);
+    const cached = getCached('smoke_test');
+    const passed = cached && cached.test === true;
+    clearCached('smoke_test');
+    results.tests.push({ name: 'Cache working', passed });
+    passed ? results.passed++ : results.failed++;
+  } catch (e) {
+    results.tests.push({ name: 'Cache working', passed: false, error: e.message });
+    results.failed++;
+  }
+
+  // Test 4: Properties accessible
+  try {
+    PropertiesService.getScriptProperties().getProperty('test');
+    results.tests.push({ name: 'Properties accessible', passed: true });
+    results.passed++;
+  } catch (e) {
+    results.tests.push({ name: 'Properties accessible', passed: false, error: e.message });
+    results.failed++;
+  }
+
+  results.allPassed = results.failed === 0;
+  return results;
 }

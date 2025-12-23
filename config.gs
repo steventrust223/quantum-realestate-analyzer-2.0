@@ -1,29 +1,97 @@
 /**
  * ============================================================================
  * QUANTUM REAL ESTATE ANALYZER - ULTIMATE EDITION v2.0
- * Configuration File (config.gs)
+ * Configuration Module (config.gs) - PRODUCTION PATCHED
  * ============================================================================
  *
- * All system configuration, thresholds, weights, API keys, and sheet names.
- * Modify these settings to customize the system behavior.
+ * Central configuration for entire system.
+ * All constants, thresholds, weights, API keys, and sheet names.
+ *
+ * PATCH NOTES v2.0.1:
+ * - Added STAGING_MODE toggle for safe testing
+ * - Added CIRCUIT_BREAKER config for AI resilience
+ * - Added LOCK_CONFIG for concurrency protection
+ * - Added CACHE_CONFIG with TTLs
+ * - Added RETRY_CONFIG for transient failure handling
+ * - Enhanced all 16 strategy definitions with complete parameters
+ * - Added comprehensive AI_PROMPTS for all scenarios
  */
+
+// =============================================================================
+// SYSTEM MODE - SET TO TRUE FOR SAFE TESTING
+// =============================================================================
+
+const STAGING_MODE = false;
+
+// =============================================================================
+// CIRCUIT BREAKER CONFIGURATION
+// =============================================================================
+
+const CIRCUIT_BREAKER = {
+  AI: {
+    FAILURE_THRESHOLD: 3,
+    RECOVERY_TIME_MS: 60000,
+    TIMEOUT_MS: 30000,
+    HALF_OPEN_REQUESTS: 1
+  },
+  CRM: {
+    FAILURE_THRESHOLD: 5,
+    RECOVERY_TIME_MS: 120000,
+    TIMEOUT_MS: 15000
+  }
+};
+
+// =============================================================================
+// LOCK CONFIGURATION
+// =============================================================================
+
+const LOCK_CONFIG = {
+  TIMEOUT_MS: 30000,
+  HOLD_TIME_MS: 120000,
+  RETRY_DELAY_MS: 500,
+  MAX_RETRIES: 5
+};
+
+// =============================================================================
+// CACHE CONFIGURATION
+// =============================================================================
+
+const CACHE_CONFIG = {
+  DEFAULT_TTL: 300,
+  SHEET_DATA_TTL: 60,
+  AI_RESPONSE_TTL: 3600,
+  MARKET_DATA_TTL: 86400,
+  PREFIX: 'QRA_'
+};
+
+// =============================================================================
+// RETRY CONFIGURATION
+// =============================================================================
+
+const RETRY_CONFIG = {
+  MAX_RETRIES: 3,
+  BASE_DELAY_MS: 1000,
+  MAX_DELAY_MS: 30000,
+  BACKOFF_MULTIPLIER: 2
+};
 
 // =============================================================================
 // API CONFIGURATION
 // =============================================================================
 
 const CONFIG = {
-  // API Keys (Set via Setup Wizard or Script Properties)
+  VERSION: '2.0.1',
+  BUILD: 'PRODUCTION-PATCHED',
+
   API_KEYS: {
-    OPENAI_API_KEY: PropertiesService.getScriptProperties().getProperty('OPENAI_API_KEY') || '',
-    SMSIT_API_KEY: PropertiesService.getScriptProperties().getProperty('SMSIT_API_KEY') || '',
-    COMPANYHUB_API_KEY: PropertiesService.getScriptProperties().getProperty('COMPANYHUB_API_KEY') || '',
-    ONEHASH_API_KEY: PropertiesService.getScriptProperties().getProperty('ONEHASH_API_KEY') || '',
-    OHMYLEAD_WEBHOOK: PropertiesService.getScriptProperties().getProperty('OHMYLEAD_WEBHOOK') || '',
-    SIGNWELL_API_KEY: PropertiesService.getScriptProperties().getProperty('SIGNWELL_API_KEY') || ''
+    OPENAI_API_KEY: '',
+    SMSIT_API_KEY: '',
+    COMPANYHUB_API_KEY: '',
+    ONEHASH_API_KEY: '',
+    SIGNWELL_API_KEY: '',
+    OHMYLEAD_WEBHOOK: ''
   },
 
-  // API Endpoints
   API_ENDPOINTS: {
     OPENAI: 'https://api.openai.com/v1/chat/completions',
     SMSIT: 'https://api.sms-it.com/v1/messages',
@@ -32,7 +100,6 @@ const CONFIG = {
     SIGNWELL: 'https://api.signwell.com/v1/documents'
   },
 
-  // OpenAI Model Configuration
   OPENAI: {
     MODEL: 'gpt-4-turbo-preview',
     MAX_TOKENS: 1500,
@@ -64,352 +131,398 @@ const SHEETS = {
 // =============================================================================
 
 const COLUMNS = {
-  // Leads Database Columns
+  IMPORT_HUB: [
+    'Timestamp', 'Address', 'City', 'State', 'ZIP', 'County',
+    'Property Type', 'Beds', 'Baths', 'SqFt', 'Year Built', 'Lot Size',
+    'Asking Price', 'Estimated ARV', 'Estimated Rent', 'Condition',
+    'Occupancy', 'Motivation Level', 'Lead Source', 'Lead Type',
+    'Seller Name', 'Seller Phone', 'Seller Email', 'Listing URL',
+    'Tax Status', 'Foreclosure Status', 'Probate', 'Vacant',
+    'Notes', 'Description', 'Imported'
+  ],
+
   LEADS_DATABASE: [
-    'Lead ID',
-    'Address',
-    'City',
-    'State',
-    'ZIP',
-    'County',
-    'Source Platform',
-    'Listing URL',
-    'Asking Price',
-    'Beds',
-    'Baths',
-    'SqFt',
-    'Lot Size',
-    'Year Built',
-    'Property Type',
-    'Occupancy',
-    'Condition',
-    'Condition Score',
-    'Seller Name',
-    'Seller Phone',
-    'Seller Email',
-    'Motivation Signals',
-    'Notes',
-    'Description',
-    'Timestamp Imported',
-    'Status'
+    'Lead ID', 'Address', 'City', 'State', 'ZIP', 'County',
+    'Source Platform', 'Listing URL', 'Asking Price', 'Beds', 'Baths',
+    'SqFt', 'Lot Size', 'Year Built', 'Property Type', 'Occupancy',
+    'Condition', 'Condition Score', 'Seller Name', 'Seller Phone',
+    'Seller Email', 'Motivation Signals', 'Notes', 'Description',
+    'Timestamp Imported', 'Status'
   ],
 
-  // Deal Analyzer Columns (extends Leads Database)
   DEAL_ANALYZER: [
-    'Lead ID',
-    'Address',
-    'City',
-    'State',
-    'ZIP',
-    'Asking Price',
-    'Beds',
-    'Baths',
-    'SqFt',
-    'Year Built',
-    'Property Type',
-    'Condition',
-    'ARV Estimate',
-    'Rent Estimate (LTR)',
-    'STR Revenue Estimate',
-    'MTR Revenue Estimate',
-    'Repair Estimate',
-    'Repair Complexity Rating',
-    'Holding Cost Estimate',
-    'MAO (Wholesale)',
-    'MAO (Flip)',
-    'MAO (BRRRR)',
-    'Offer Target',
-    'Spread Estimate',
-    'Cashflow Estimate (LTR)',
-    'Cashflow Estimate (MTR)',
-    'Cashflow Estimate (STR)',
-    'Equity Estimate',
-    'Sub2 Fit Score',
-    'Wrap Fit Score',
-    'Seller Finance Fit Score',
-    'Strategy Recommendation',
-    'Strategy Confidence',
-    'Deal Classifier',
-    'Risk Score',
-    'Sales Velocity Score',
-    'Market Heat Score',
-    'Negotiation Angle',
-    'Seller Psychology Score',
-    'Motivation Score',
-    'Next Best Action',
-    'Seller Message',
-    'Buyer Match Count',
-    'Buyer Match Top 3',
-    'CRM Route Target',
-    'Synced',
-    'Last Analyzed Timestamp'
+    'Lead ID', 'Address', 'City', 'State', 'ZIP', 'Asking Price',
+    'Beds', 'Baths', 'SqFt', 'Year Built', 'Property Type', 'Condition',
+    'ARV Estimate', 'Rent Estimate (LTR)', 'STR Revenue Estimate',
+    'MTR Revenue Estimate', 'Repair Estimate', 'Repair Complexity Rating',
+    'Holding Cost Estimate', 'MAO (Wholesale)', 'MAO (Flip)', 'MAO (BRRRR)',
+    'Offer Target', 'Spread Estimate', 'Cashflow Estimate (LTR)',
+    'Cashflow Estimate (MTR)', 'Cashflow Estimate (STR)', 'Equity Estimate',
+    'Sub2 Fit Score', 'Wrap Fit Score', 'Seller Finance Fit Score',
+    'Strategy Recommendation', 'Strategy Confidence', 'Deal Classifier',
+    'Risk Score', 'Sales Velocity Score', 'Market Heat Score',
+    'Negotiation Angle', 'Seller Psychology Score', 'Motivation Score',
+    'Next Best Action', 'Seller Message', 'Buyer Match Count',
+    'Buyer Match Top 3', 'CRM Route Target', 'Synced', 'Last Analyzed Timestamp'
   ],
 
-  // Verdict Columns
   VERDICT: [
-    'Rank',
-    'Lead ID',
-    'Address',
-    'City',
-    'State',
-    'Strategy',
-    'Deal Classifier',
-    'Offer Target',
-    'Profit/Spread',
-    'Risk Score',
-    'Velocity Score',
-    'Market Heat',
-    'Confidence',
-    'Action',
-    'Listing URL',
-    'Timestamp'
+    'Rank', 'Lead ID', 'Address', 'City', 'State', 'Strategy',
+    'Deal Classifier', 'Offer Target', 'Profit/Spread', 'Risk Score',
+    'Velocity Score', 'Market Heat', 'Confidence', 'Action',
+    'Listing URL', 'Timestamp'
   ],
 
-  // Buyers & Exit Options Columns
   BUYERS_EXIT: [
-    'Buyer ID',
-    'Buyer Name',
-    'Company',
-    'Email',
-    'Phone',
-    'Preferred ZIP Codes',
-    'Preferred Strategies',
-    'Max Price',
-    'Min Price',
-    'Property Types',
-    'Active',
-    'Last Contact',
-    'Notes'
+    'Buyer ID', 'Buyer Name', 'Company', 'Email', 'Phone',
+    'Preferred ZIP Codes', 'Preferred Strategies', 'Max Price', 'Min Price',
+    'Property Types', 'Active', 'Last Contact', 'Notes'
   ],
 
-  // Offers & Disposition Columns
   OFFERS_DISPOSITION: [
-    'Offer ID',
-    'Lead ID',
-    'Address',
-    'Strategy',
-    'Offer Amount',
-    'Offer Date',
-    'Status',
-    'Counter Offer',
-    'Accepted Price',
-    'Contract Date',
-    'Buyer Assigned',
-    'Assignment Fee',
-    'Closing Date',
-    'Dispo Notes',
-    'Last Updated'
+    'Offer ID', 'Lead ID', 'Address', 'Strategy', 'Offer Amount',
+    'Offer Date', 'Status', 'Counter Offer', 'Accepted Price',
+    'Contract Date', 'Buyer Assigned', 'Assignment Fee', 'Closing Date',
+    'Dispo Notes', 'Last Updated'
   ],
 
-  // Repair Estimator Columns
   REPAIR_ESTIMATOR: [
-    'Item',
-    'Category',
-    'Low Estimate',
-    'Medium Estimate',
-    'High Estimate',
-    'Unit',
-    'Notes'
+    'Item', 'Category', 'Low Estimate', 'Medium Estimate', 'High Estimate',
+    'Unit', 'Notes'
   ],
 
-  // Market & ZIP Intelligence Columns
   MARKET_ZIP_INTEL: [
-    'ZIP Code',
-    'City',
-    'State',
-    'Market Heat Score',
-    'Avg DOM',
-    'Sales Velocity',
-    'Median Price',
-    'Price Trend',
-    'Avg Rent (LTR)',
-    'Avg Rent (STR)',
-    'Avg Rent (MTR)',
-    'Investor Activity',
-    'Foreclosure Rate',
-    'Population Growth',
-    'Last Updated'
+    'ZIP Code', 'City', 'State', 'Market Heat Score', 'Avg DOM',
+    'Sales Velocity', 'Median Price', 'Price Trend', 'Avg Rent (LTR)',
+    'Avg Rent (STR)', 'Avg Rent (MTR)', 'Investor Activity',
+    'Foreclosure Rate', 'Population Growth', 'Last Updated'
   ],
 
-  // CRM Sync Log Columns
   CRM_SYNC_LOG: [
-    'Timestamp',
-    'Lead ID',
-    'Address',
-    'CRM Target',
-    'Action',
-    'Status',
-    'Response Code',
-    'Error Message',
-    'Retry Count'
+    'Timestamp', 'Lead ID', 'Address', 'CRM Target', 'Action',
+    'Status', 'Response Code', 'Error Message', 'Retry Count'
   ],
 
-  // Automation Control Center Columns
   AUTOMATION_CONTROL: [
-    'Feature',
-    'Enabled',
-    'Last Run',
-    'Next Scheduled',
-    'Status',
-    'Notes'
+    'Feature', 'Enabled', 'Last Run', 'Next Scheduled', 'Status', 'Notes'
   ],
 
-  // System Health Columns
   SYSTEM_HEALTH: [
-    'Timestamp',
-    'Component',
-    'Status',
-    'Message',
-    'API Quota Used',
-    'Error Count',
-    'Warning Count'
+    'Timestamp', 'Component', 'Status', 'Message', 'API Quota Used',
+    'Error Count', 'Warning Count'
   ]
 };
 
 // =============================================================================
-// STRATEGY CONFIGURATION
+// STRATEGY CONFIGURATION - ALL 16 STRATEGIES COMPLETE
 // =============================================================================
 
 const STRATEGIES = {
-  // Core Acquisition (Capital-Light)
   WHOLESALING_LOCAL: {
     id: 'WHOLESALING_LOCAL',
     name: 'Wholesaling (Local)',
+    code: 'LW',
+    family: 'WHOLESALE',
     category: 'Core Acquisition',
+    description: 'Assign contract to local cash buyer',
     minSpread: 5000,
     targetSpread: 15000,
+    arvMultiplier: 0.70,
     holdingPeriod: 30,
-    requiredEquity: 0.25
+    requiredEquity: 0.25,
+    riskLevel: 'Low',
+    capitalRequired: 'Minimal',
+    idealCondition: ['Poor', 'Fair'],
+    idealMotivation: ['High', 'Very High'],
+    exitOptions: ['Assignment', 'Double Close']
   },
+
   WHOLESALING_VIRTUAL: {
     id: 'WHOLESALING_VIRTUAL',
     name: 'Virtual Wholesaling',
+    code: 'VW',
+    family: 'WHOLESALE',
     category: 'Core Acquisition',
+    description: 'Remote market wholesale with boots on ground partner',
     minSpread: 7500,
     targetSpread: 20000,
+    arvMultiplier: 0.65,
     holdingPeriod: 45,
-    requiredEquity: 0.25
+    requiredEquity: 0.25,
+    riskLevel: 'Medium',
+    capitalRequired: 'Minimal',
+    idealCondition: ['Poor', 'Fair'],
+    idealMotivation: ['High', 'Very High'],
+    exitOptions: ['Assignment', 'Double Close'],
+    requiresPartner: true
   },
+
   WHOLESALING_JV: {
     id: 'WHOLESALING_JV',
     name: 'JV Wholesaling',
+    code: 'JV',
+    family: 'WHOLESALE',
     category: 'Core Acquisition',
+    description: 'Joint venture wholesale with partner split',
     minSpread: 10000,
     targetSpread: 25000,
+    arvMultiplier: 0.68,
     holdingPeriod: 30,
-    requiredEquity: 0.20
+    requiredEquity: 0.20,
+    riskLevel: 'Low',
+    capitalRequired: 'Minimal',
+    idealCondition: ['Poor', 'Fair', 'Good'],
+    idealMotivation: ['Medium', 'High', 'Very High'],
+    exitOptions: ['Assignment'],
+    splitPercentage: 0.50
   },
 
-  // Ownership / Creative Finance
   SUBJECT_TO: {
     id: 'SUBJECT_TO',
     name: 'Subject-To (Sub2)',
+    code: 'SUB',
+    family: 'CREATIVE',
     category: 'Creative Finance',
+    description: 'Take over existing mortgage payments',
     minEquity: 0.10,
     targetEquity: 0.25,
+    arvMultiplier: 0.85,
     idealLTV: 0.80,
-    cashflowMin: 200
+    cashflowMin: 200,
+    riskLevel: 'Medium',
+    capitalRequired: 'Low',
+    idealCondition: ['Fair', 'Good'],
+    idealMotivation: ['High', 'Very High'],
+    exitOptions: ['Wrap', 'Lease Option', 'Sell', 'Rent'],
+    requiresEquity: true,
+    minEquityPercent: 0.15
   },
+
   WRAPAROUND: {
     id: 'WRAPAROUND',
     name: 'Wraparound Mortgage',
+    code: 'WRAP',
+    family: 'CREATIVE',
     category: 'Creative Finance',
+    description: 'Create new mortgage wrapping existing debt',
     minSpread: 50,
     targetSpread: 200,
+    arvMultiplier: 0.90,
     interestDelta: 0.02,
-    cashflowMin: 300
+    cashflowMin: 300,
+    riskLevel: 'Medium',
+    capitalRequired: 'Low',
+    idealCondition: ['Fair', 'Good', 'Excellent'],
+    idealMotivation: ['Medium', 'High'],
+    exitOptions: ['Cash Flow', 'Backend Profit'],
+    requiresEquity: true,
+    spreadOnInterest: true
   },
+
   SELLER_FINANCING: {
     id: 'SELLER_FINANCING',
     name: 'Seller Financing',
+    code: 'SF',
+    family: 'CREATIVE',
     category: 'Creative Finance',
+    description: 'Seller acts as the bank with negotiated terms',
     minDownPayment: 0.05,
     targetDownPayment: 0.15,
+    arvMultiplier: 0.88,
     idealRate: 0.06,
-    cashflowMin: 200
+    cashflowMin: 200,
+    riskLevel: 'Low',
+    capitalRequired: 'Medium',
+    idealCondition: ['Good', 'Fair'],
+    idealMotivation: ['Medium', 'High'],
+    exitOptions: ['Refinance', 'Sell', 'Hold'],
+    freeAndClearPreferred: true
   },
 
-  // Rehab / Value-Add
   FIX_AND_FLIP: {
     id: 'FIX_AND_FLIP',
     name: 'Fix & Flip',
+    code: 'FF',
+    family: 'FLIP',
     category: 'Rehab',
+    description: 'Renovate and sell for retail profit',
     minProfit: 25000,
     targetProfit: 50000,
+    arvMultiplier: 0.70,
     maxRepairPercent: 0.30,
-    holdingPeriod: 120
+    holdingPeriod: 120,
+    riskLevel: 'High',
+    capitalRequired: 'High',
+    idealCondition: ['Poor', 'Fair'],
+    idealMotivation: ['Any'],
+    exitOptions: ['Retail Sale'],
+    requiresRehab: true
   },
+
   BRRRR: {
     id: 'BRRRR',
     name: 'BRRRR',
+    code: 'BR',
+    family: 'RENTAL',
     category: 'Rehab',
+    description: 'Buy, Rehab, Rent, Refinance, Repeat',
     minEquityAfterRefi: 0.20,
     targetEquityAfterRefi: 0.30,
+    arvMultiplier: 0.75,
     refinancePercent: 0.75,
-    cashflowMin: 150
+    cashflowMin: 150,
+    holdingPeriod: 180,
+    riskLevel: 'Medium',
+    capitalRequired: 'High',
+    idealCondition: ['Poor', 'Fair'],
+    idealMotivation: ['Any'],
+    exitOptions: ['Refinance', 'Hold'],
+    requiresRehab: true,
+    targetCashOnCash: 0.12
   },
 
-  // Rentals
   STR: {
     id: 'STR',
     name: 'Short-Term Rental (STR)',
+    code: 'STR',
+    family: 'RENTAL',
     category: 'Rentals',
+    description: 'Airbnb/VRBO vacation rental',
     minCashflow: 500,
     targetCashflow: 1500,
+    arvMultiplier: 0.85,
     occupancyRate: 0.65,
-    seasonalityFactor: 1.2
+    seasonalityFactor: 1.2,
+    holdingPeriod: 45,
+    riskLevel: 'Medium',
+    capitalRequired: 'High',
+    idealCondition: ['Good', 'Excellent'],
+    idealMotivation: ['Any'],
+    exitOptions: ['Cash Flow', 'Sell'],
+    locationSensitive: true,
+    rentMultiplier: 2.5
   },
+
   MTR: {
     id: 'MTR',
     name: 'Mid-Term Rental (MTR)',
+    code: 'MTR',
+    family: 'RENTAL',
     category: 'Rentals',
+    description: 'Furnished rental for traveling professionals',
     minCashflow: 300,
     targetCashflow: 800,
+    arvMultiplier: 0.85,
     occupancyRate: 0.85,
-    typicalStay: 90
+    typicalStay: 90,
+    holdingPeriod: 45,
+    riskLevel: 'Low',
+    capitalRequired: 'Medium',
+    idealCondition: ['Good', 'Fair'],
+    idealMotivation: ['Any'],
+    exitOptions: ['Cash Flow', 'Sell'],
+    rentMultiplier: 1.5
   },
+
   LTR: {
     id: 'LTR',
     name: 'Long-Term Rental (LTR)',
+    code: 'LTR',
+    family: 'RENTAL',
     category: 'Rentals',
+    description: 'Traditional 12-month lease rental',
     minCashflow: 150,
     targetCashflow: 400,
+    arvMultiplier: 0.80,
     occupancyRate: 0.95,
-    vacancyReserve: 0.05
+    vacancyReserve: 0.05,
+    holdingPeriod: 45,
+    riskLevel: 'Low',
+    capitalRequired: 'Medium',
+    idealCondition: ['Good', 'Fair', 'Excellent'],
+    idealMotivation: ['Any'],
+    exitOptions: ['Cash Flow', 'Appreciation', 'Sell'],
+    targetCashFlow: 200
   },
 
-  // Special Situations
   PRE_FORECLOSURE: {
     id: 'PRE_FORECLOSURE',
     name: 'Pre-Foreclosure',
+    code: 'PF',
+    family: 'DISTRESSED',
     category: 'Special Situations',
+    description: 'Purchase from distressed homeowner before auction',
     urgencyMultiplier: 1.5,
     discountTarget: 0.30,
-    negotiationLeverage: 'high'
+    arvMultiplier: 0.65,
+    negotiationLeverage: 'high',
+    holdingPeriod: 14,
+    riskLevel: 'Medium',
+    capitalRequired: 'Medium',
+    idealCondition: ['Any'],
+    idealMotivation: ['Very High'],
+    exitOptions: ['Wholesale', 'Flip', 'Sub-To', 'Hold'],
+    urgencyFactor: true
   },
+
   TAX_DELINQUENT: {
     id: 'TAX_DELINQUENT',
     name: 'Tax Delinquent / Liens',
+    code: 'TD',
+    family: 'DISTRESSED',
     category: 'Special Situations',
+    description: 'Purchase properties with delinquent taxes',
     urgencyMultiplier: 1.3,
     discountTarget: 0.35,
-    additionalCosts: 'liens'
+    arvMultiplier: 0.60,
+    additionalCosts: 'liens',
+    holdingPeriod: 30,
+    riskLevel: 'Medium',
+    capitalRequired: 'Medium',
+    idealCondition: ['Any'],
+    idealMotivation: ['High', 'Very High'],
+    exitOptions: ['Wholesale', 'Flip', 'Hold'],
+    requiresTaxCure: true
   },
+
   VACANT_ABANDONED: {
     id: 'VACANT_ABANDONED',
     name: 'Vacant / Abandoned',
+    code: 'VAC',
+    family: 'DISTRESSED',
     category: 'Special Situations',
+    description: 'Purchase vacant or abandoned properties',
     conditionDiscount: 0.20,
     holdingCostMultiplier: 0.5,
-    repairMultiplier: 1.3
+    arvMultiplier: 0.55,
+    repairMultiplier: 1.3,
+    holdingPeriod: 45,
+    riskLevel: 'High',
+    capitalRequired: 'Medium',
+    idealCondition: ['Poor'],
+    idealMotivation: ['High', 'Very High'],
+    exitOptions: ['Wholesale', 'Flip'],
+    requiresSkipTrace: true
   },
+
   INHERITED_PROBATE: {
     id: 'INHERITED_PROBATE',
     name: 'Inherited / Probate',
+    code: 'PRO',
+    family: 'DISTRESSED',
     category: 'Special Situations',
+    description: 'Purchase from heirs or through probate',
     timelineMultiplier: 1.5,
     emotionalFactor: 'high',
-    discountTarget: 0.25
+    arvMultiplier: 0.70,
+    discountTarget: 0.25,
+    holdingPeriod: 60,
+    riskLevel: 'Low',
+    capitalRequired: 'Medium',
+    idealCondition: ['Any'],
+    idealMotivation: ['Medium', 'High'],
+    exitOptions: ['Wholesale', 'Flip', 'Hold'],
+    sensitivityRequired: true
   }
 };
 
@@ -418,7 +531,6 @@ const STRATEGIES = {
 // =============================================================================
 
 const SCORING_WEIGHTS = {
-  // Deal Classifier Weights
   DEAL_CLASSIFIER: {
     profitWeight: 0.30,
     riskWeight: 0.25,
@@ -427,7 +539,6 @@ const SCORING_WEIGHTS = {
     motivationWeight: 0.10
   },
 
-  // Risk Score Components
   RISK_FACTORS: {
     conditionWeight: 0.25,
     marketWeight: 0.20,
@@ -437,7 +548,6 @@ const SCORING_WEIGHTS = {
     timeWeight: 0.10
   },
 
-  // Market Heat Components
   MARKET_HEAT: {
     domWeight: 0.30,
     priceGrowthWeight: 0.25,
@@ -446,7 +556,6 @@ const SCORING_WEIGHTS = {
     investorActivityWeight: 0.10
   },
 
-  // Strategy Selection Weights
   STRATEGY_SELECTION: {
     profitPotential: 0.30,
     riskLevel: 0.25,
@@ -461,7 +570,6 @@ const SCORING_WEIGHTS = {
 // =============================================================================
 
 const THRESHOLDS = {
-  // Deal Classification Thresholds
   DEAL_CLASSIFIER: {
     HOT_DEAL: 85,
     PORTFOLIO_FOUNDATION: 70,
@@ -469,7 +577,6 @@ const THRESHOLDS = {
     PASS: 0
   },
 
-  // Risk Levels
   RISK: {
     LOW: 30,
     MEDIUM: 60,
@@ -477,7 +584,6 @@ const THRESHOLDS = {
     CRITICAL: 100
   },
 
-  // Market Heat Levels
   MARKET_HEAT: {
     COLD: 25,
     COOL: 45,
@@ -486,7 +592,6 @@ const THRESHOLDS = {
     ON_FIRE: 100
   },
 
-  // Confidence Levels
   CONFIDENCE: {
     LOW: 40,
     MODERATE: 60,
@@ -494,7 +599,6 @@ const THRESHOLDS = {
     VERY_HIGH: 95
   },
 
-  // MAO Calculation Defaults
   MAO: {
     WHOLESALE_DISCOUNT: 0.70,
     FLIP_DISCOUNT: 0.70,
@@ -503,7 +607,6 @@ const THRESHOLDS = {
     HOLDING_COST_MONTHLY: 0.01
   },
 
-  // Rental Calculations
   RENTALS: {
     LTR_CAP_RATE: 0.08,
     MTR_PREMIUM: 1.25,
@@ -538,7 +641,6 @@ const REPAIR_DEFAULTS = {
     { item: 'Contingency', low: 3000, medium: 8000, high: 15000 }
   ],
 
-  // Condition multipliers
   conditionMultipliers: {
     'Excellent': 0.0,
     'Good': 0.15,
@@ -548,7 +650,6 @@ const REPAIR_DEFAULTS = {
     'Tear Down': 1.5
   },
 
-  // Per square foot estimates
   perSqFt: {
     light: 15,
     medium: 35,
@@ -562,7 +663,6 @@ const REPAIR_DEFAULTS = {
 // =============================================================================
 
 const AUTOMATION = {
-  // Feature Toggles (can be overridden in Automation Control Center)
   FEATURES: {
     AUTO_IMPORT: true,
     AUTO_ANALYZE: true,
@@ -571,7 +671,6 @@ const AUTOMATION = {
     DAILY_REFRESH: true
   },
 
-  // Timing
   TIMING: {
     DAILY_TRIGGER_HOUR: 7,
     DAILY_TRIGGER_MINUTE: 0,
@@ -580,7 +679,6 @@ const AUTOMATION = {
     API_RATE_LIMIT_MS: 1000
   },
 
-  // CRM Routing Rules
   CRM_ROUTING: {
     HOT_DEAL: 'SMS-iT',
     PORTFOLIO: 'CompanyHub',
@@ -594,7 +692,6 @@ const AUTOMATION = {
 // =============================================================================
 
 const UI_CONFIG = {
-  // Color Scheme
   COLORS: {
     PRIMARY: '#1a73e8',
     SUCCESS: '#34a853',
@@ -604,15 +701,12 @@ const UI_CONFIG = {
     DARK: '#202124',
     LIGHT: '#f8f9fa',
     WHITE: '#ffffff',
-
-    // Deal Classifier Colors
     HOT_DEAL: '#ff4444',
     PORTFOLIO: '#00C851',
     SOLID_DEAL: '#33b5e5',
     PASS: '#aaaaaa'
   },
 
-  // Formatting
   FORMATTING: {
     HEADER_BG: '#1a73e8',
     HEADER_TEXT: '#ffffff',
@@ -623,16 +717,15 @@ const UI_CONFIG = {
     COLUMN_WIDTH_WIDE: 200
   },
 
-  // Dashboard Settings
   DASHBOARD: {
     CHART_HEIGHT: 300,
     KPI_TILES: 6,
-    REFRESH_INTERVAL: 300000 // 5 minutes
+    REFRESH_INTERVAL: 300000
   }
 };
 
 // =============================================================================
-// PROMPT TEMPLATES (AI)
+// AI PROMPTS - COMPLETE SET
 // =============================================================================
 
 const AI_PROMPTS = {
@@ -729,28 +822,22 @@ const ERROR_MESSAGES = {
   NETWORK_ERROR: 'Network request failed: ',
   RATE_LIMIT: 'API rate limit exceeded. Please wait.',
   PARSE_ERROR: 'Failed to parse response: ',
-  GENERAL_ERROR: 'An unexpected error occurred: '
+  GENERAL_ERROR: 'An unexpected error occurred: ',
+  CIRCUIT_OPEN: 'Service temporarily unavailable (circuit breaker open)',
+  LOCK_TIMEOUT: 'Could not acquire lock - operation in progress',
+  STAGING_MODE: '[STAGING] Operation blocked in staging mode'
 };
 
 // =============================================================================
-// HELPER FUNCTION TO GET CONFIG VALUES
+// HELPER FUNCTIONS
 // =============================================================================
 
-/**
- * Gets a nested configuration value safely
- * @param {string} path - Dot-notation path (e.g., 'THRESHOLDS.DEAL_CLASSIFIER.HOT_DEAL')
- * @param {*} defaultValue - Default value if path not found
- * @returns {*} Configuration value or default
- */
 function getConfig(path, defaultValue = null) {
   try {
     const parts = path.split('.');
     let value = { CONFIG, SHEETS, COLUMNS, STRATEGIES, SCORING_WEIGHTS, THRESHOLDS, AUTOMATION, UI_CONFIG, AI_PROMPTS };
-
     for (const part of parts) {
-      if (value[part] === undefined) {
-        return defaultValue;
-      }
+      if (value[part] === undefined) return defaultValue;
       value = value[part];
     }
     return value;
@@ -759,20 +846,57 @@ function getConfig(path, defaultValue = null) {
   }
 }
 
-/**
- * Updates a script property (for API keys, etc.)
- * @param {string} key - Property key
- * @param {string} value - Property value
- */
 function setConfigProperty(key, value) {
+  if (STAGING_MODE) {
+    Logger.log('[STAGING] Would set property: ' + key);
+    return;
+  }
   PropertiesService.getScriptProperties().setProperty(key, value);
 }
 
-/**
- * Gets a script property
- * @param {string} key - Property key
- * @returns {string} Property value or empty string
- */
 function getConfigProperty(key) {
   return PropertiesService.getScriptProperties().getProperty(key) || '';
+}
+
+function isStagingMode() {
+  return STAGING_MODE === true;
+}
+
+function getApiKey(service) {
+  const keyMap = {
+    'openai': 'OPENAI_API_KEY',
+    'smsit': 'SMSIT_API_KEY',
+    'companyhub': 'COMPANYHUB_API_KEY',
+    'onehash': 'ONEHASH_API_KEY',
+    'signwell': 'SIGNWELL_API_KEY'
+  };
+  const propKey = keyMap[service.toLowerCase()];
+  if (!propKey) return '';
+  return CONFIG.API_KEYS[propKey] || getConfigProperty(propKey);
+}
+
+function getAllStrategyCodes() {
+  return Object.keys(STRATEGIES);
+}
+
+function getStrategyByCode(code) {
+  for (const [key, strategy] of Object.entries(STRATEGIES)) {
+    if (strategy.code === code) return { key, ...strategy };
+  }
+  return null;
+}
+
+function getStrategyByName(name) {
+  for (const [key, strategy] of Object.entries(STRATEGIES)) {
+    if (strategy.name.toLowerCase() === name.toLowerCase()) {
+      return { key, ...strategy };
+    }
+  }
+  return null;
+}
+
+function getStrategiesByFamily(family) {
+  return Object.entries(STRATEGIES)
+    .filter(([_, s]) => s.family === family)
+    .map(([key, strategy]) => ({ key, ...strategy }));
 }

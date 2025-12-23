@@ -1,7 +1,7 @@
 /**
  * ============================================================================
  * QUANTUM REAL ESTATE ANALYZER - ULTIMATE EDITION v2.0
- * AI Integration Module (ai.gs)
+ * AI Integration Module (ai.gs) - PRODUCTION PATCHED
  * ============================================================================
  *
  * Handles all AI-powered features using OpenAI API:
@@ -9,6 +9,13 @@
  * - Repair inference
  * - Seller psychology analysis
  * - Personalized seller messaging
+ *
+ * PATCH NOTES v2.0.1:
+ * - Added circuit breaker pattern for AI resilience
+ * - Enhanced JSON parsing with safeParseJSON
+ * - Added timeout handling
+ * - Better fallback mechanisms
+ * - Response schema validation
  */
 
 // =============================================================================
@@ -16,16 +23,27 @@
 // =============================================================================
 
 /**
- * Makes a request to OpenAI API
+ * Makes a request to OpenAI API with circuit breaker protection
  * @param {string} prompt - User prompt
  * @param {string} systemPrompt - System instructions
  * @returns {Object} API response or null
  */
 function callOpenAI(prompt, systemPrompt = 'You are a real estate investment expert.') {
+  // Check circuit breaker
+  if (CircuitBreakerState.isOpen('AI')) {
+    logWarning('AI', 'Circuit breaker OPEN - skipping AI call');
+    return null;
+  }
+
   const apiKey = CONFIG.API_KEYS.OPENAI_API_KEY || getConfigProperty('OPENAI_API_KEY');
 
   if (!apiKey) {
     logWarning('AI', 'OpenAI API key not configured');
+    return null;
+  }
+
+  if (isStagingMode()) {
+    Logger.log('[STAGING] Would call OpenAI API');
     return null;
   }
 
@@ -57,22 +75,34 @@ function callOpenAI(prompt, systemPrompt = 'You are a real estate investment exp
     const code = response.getResponseCode();
 
     if (code !== 200) {
+      CircuitBreakerState.recordFailure('AI');
       logError('AI', new Error(`API returned ${code}`), response.getContentText());
       return null;
     }
 
-    const data = JSON.parse(response.getContentText());
-    const content = data.choices[0].message.content;
+    // Success - record it
+    CircuitBreakerState.recordSuccess('AI');
 
+    const data = safeParseJSON(response.getContentText(), null);
+    if (!data || !data.choices || !data.choices[0]) {
+      logWarning('AI', 'Invalid OpenAI response structure');
+      return null;
+    }
+
+    const content = data.choices[0].message.content;
     logInfo('AI', 'OpenAI request successful');
 
-    try {
-      return JSON.parse(content);
-    } catch (e) {
-      logWarning('AI', 'Failed to parse JSON response, returning raw content');
-      return { raw: content };
+    // Parse the JSON content
+    const parsed = safeParseJSON(content, null);
+    if (parsed) {
+      return parsed;
     }
+
+    logWarning('AI', 'Failed to parse AI JSON response');
+    return { raw: content };
+
   } catch (e) {
+    CircuitBreakerState.recordFailure('AI');
     logError('AI', e, 'OpenAI API call failed');
     return null;
   }
@@ -84,6 +114,9 @@ function callOpenAI(prompt, systemPrompt = 'You are a real estate investment exp
  */
 function testAIConnection() {
   try {
+    // Reset circuit breaker for test
+    CircuitBreakerState.reset('AI');
+
     const result = callOpenAI(
       'Return a simple JSON: {"status": "ok", "message": "AI connection successful"}',
       'Return only valid JSON.'
@@ -110,11 +143,17 @@ function testAIConnection() {
  * Gets AI-powered strategy recommendation for a lead
  * @param {Object} lead - Lead data
  * @param {Object} calculations - Pre-calculated values (ARV, repairs, etc.)
- * @returns {Object} AI recommendation or null
+ * @returns {Object} AI recommendation or default fallback
  */
 function getAIStrategyRecommendation(lead, calculations) {
   if (!isFeatureEnabled('AI Strategy Recommendations')) {
-    return null;
+    return getDefaultStrategyRecommendation(lead, calculations);
+  }
+
+  // Check cache first
+  const cached = getCachedAIResult(lead['Lead ID'], 'strategy');
+  if (cached) {
+    return cached;
   }
 
   // Build property data string
@@ -127,48 +166,101 @@ function getAIStrategyRecommendation(lead, calculations) {
   const result = callOpenAI(prompt);
 
   if (!result) {
-    return getDefaultStrategyRecommendation();
+    return getDefaultStrategyRecommendation(lead, calculations);
   }
 
-  // Validate response
-  if (!validateJsonSchema(result, ['strategy', 'confidence', 'dealClassifier'])) {
+  // Validate response schema
+  const requiredFields = ['strategy', 'confidence', 'dealClassifier'];
+  if (!validateJsonSchema(result, requiredFields)) {
     logWarning('AI', 'Invalid strategy recommendation schema');
-    return getDefaultStrategyRecommendation();
+    return getDefaultStrategyRecommendation(lead, calculations);
   }
 
-  return {
-    strategy: result.strategy,
-    confidence: result.confidence,
-    reasoning: result.reasoning || '',
-    alternateStrategies: result.alternateStrategies || [],
-    riskFactors: result.riskFactors || [],
-    dealClassifier: result.dealClassifier
+  const recommendation = {
+    strategy: sanitizeStrategy(result.strategy),
+    confidence: Math.min(100, Math.max(0, safeParseNumber(result.confidence, 50))),
+    reasoning: truncateText(result.reasoning || '', 500),
+    alternateStrategies: Array.isArray(result.alternateStrategies) ?
+      result.alternateStrategies.slice(0, 3).map(sanitizeStrategy) : [],
+    riskFactors: Array.isArray(result.riskFactors) ?
+      result.riskFactors.slice(0, 5) : [],
+    dealClassifier: sanitizeDealClassifier(result.dealClassifier)
   };
+
+  // Cache the result
+  cacheAIResult(lead['Lead ID'], 'strategy', recommendation);
+
+  return recommendation;
+}
+
+/**
+ * Sanitizes strategy name to match known strategies
+ * @param {string} strategy - Raw strategy name
+ * @returns {string} Sanitized strategy name
+ */
+function sanitizeStrategy(strategy) {
+  if (!strategy) return 'Wholesaling (Local)';
+
+  const strategyLower = strategy.toLowerCase();
+  const knownStrategies = Object.values(STRATEGIES).map(s => s.name);
+
+  // Try exact match first
+  for (const known of knownStrategies) {
+    if (known.toLowerCase() === strategyLower) {
+      return known;
+    }
+  }
+
+  // Try partial match
+  for (const known of knownStrategies) {
+    if (strategyLower.includes(known.toLowerCase().split(' ')[0])) {
+      return known;
+    }
+  }
+
+  return 'Wholesaling (Local)';
+}
+
+/**
+ * Sanitizes deal classifier to valid values
+ * @param {string} classifier - Raw classifier
+ * @returns {string} Valid classifier
+ */
+function sanitizeDealClassifier(classifier) {
+  if (!classifier) return 'SOLID DEAL';
+
+  const classifierUpper = classifier.toUpperCase();
+
+  if (classifierUpper.includes('HOT')) return 'HOT DEAL';
+  if (classifierUpper.includes('PORTFOLIO')) return 'PORTFOLIO FOUNDATION';
+  if (classifierUpper.includes('SOLID')) return 'SOLID DEAL';
+  if (classifierUpper.includes('PASS')) return 'PASS';
+
+  return 'SOLID DEAL';
 }
 
 /**
  * Formats property data for AI prompt
- * @param {Object} lead - Lead data
- * @param {Object} calculations - Calculated values
- * @returns {string} Formatted data string
  */
 function formatPropertyDataForAI(lead, calculations) {
+  calculations = calculations || {};
+
   return `
-Address: ${lead['Address']}, ${lead['City']}, ${lead['State']} ${lead['ZIP']}
+Address: ${lead['Address'] || 'Unknown'}, ${lead['City'] || ''}, ${lead['State'] || ''} ${lead['ZIP'] || ''}
 Asking Price: ${formatCurrency(lead['Asking Price'])}
-Beds/Baths: ${lead['Beds']}/${lead['Baths']}
-Square Feet: ${lead['SqFt']}
-Year Built: ${lead['Year Built']}
-Property Type: ${lead['Property Type']}
-Condition: ${lead['Condition']}
-Occupancy: ${lead['Occupancy']}
+Beds/Baths: ${lead['Beds'] || 'N/A'}/${lead['Baths'] || 'N/A'}
+Square Feet: ${lead['SqFt'] || 'Unknown'}
+Year Built: ${lead['Year Built'] || 'Unknown'}
+Property Type: ${lead['Property Type'] || 'Single Family'}
+Condition: ${lead['Condition'] || 'Unknown'}
+Occupancy: ${lead['Occupancy'] || 'Unknown'}
 
 Motivation Signals: ${lead['Motivation Signals'] || 'None specified'}
-Description: ${lead['Description'] || 'None'}
-Notes: ${lead['Notes'] || 'None'}
+Description: ${truncateText(lead['Description'] || 'None', 300)}
+Notes: ${truncateText(lead['Notes'] || 'None', 200)}
 
 Calculated Values:
-- ARV Estimate: ${formatCurrency(calculations.arv)}
+- ARV Estimate: ${formatCurrency(calculations.arv || 0)}
 - Repair Estimate: ${formatCurrency(calculations.repairs?.estimate || 0)} (${calculations.repairs?.complexity || 'Unknown'})
 - LTR Rent Estimate: ${formatCurrency(calculations.rents?.ltr || 0)}/month
 - STR Revenue Estimate: ${formatCurrency(calculations.rents?.str || 0)}/month
@@ -178,16 +270,45 @@ Calculated Values:
 
 /**
  * Returns default strategy recommendation when AI is unavailable
- * @returns {Object} Default recommendation
  */
-function getDefaultStrategyRecommendation() {
+function getDefaultStrategyRecommendation(lead, calculations) {
+  calculations = calculations || {};
+
+  // Intelligent default based on available data
+  const askingPrice = safeParseNumber(lead['Asking Price'], 0);
+  const arv = calculations.arv || askingPrice * 1.2;
+  const condition = normalizeCondition(lead['Condition']);
+  const motivation = (lead['Motivation Signals'] || '').toLowerCase();
+
+  let strategy = 'Wholesaling (Local)';
+  let classifier = 'SOLID DEAL';
+  let confidence = 50;
+
+  // Check for creative finance opportunities
+  if (motivation.includes('behind on payments') || motivation.includes('foreclosure')) {
+    strategy = 'Subject-To (Sub2)';
+    classifier = 'HOT DEAL';
+    confidence = 70;
+  } else if (motivation.includes('inherit') || motivation.includes('probate')) {
+    strategy = 'Inherited / Probate';
+    classifier = 'PORTFOLIO FOUNDATION';
+    confidence = 65;
+  } else if (condition.score < 40 && arv > askingPrice * 1.4) {
+    strategy = 'Fix & Flip';
+    classifier = 'PORTFOLIO FOUNDATION';
+    confidence = 60;
+  } else if (askingPrice < arv * 0.7) {
+    classifier = 'HOT DEAL';
+    confidence = 65;
+  }
+
   return {
-    strategy: 'Wholesaling (Local)',
-    confidence: 50,
-    reasoning: 'Default recommendation - AI unavailable',
+    strategy: strategy,
+    confidence: confidence,
+    reasoning: 'Algorithmic recommendation - AI unavailable',
     alternateStrategies: ['Fix & Flip', 'Long-Term Rental (LTR)'],
-    riskFactors: ['Limited data available'],
-    dealClassifier: 'SOLID DEAL'
+    riskFactors: ['Limited data available', 'AI analysis not performed'],
+    dealClassifier: classifier
   };
 }
 
@@ -197,16 +318,18 @@ function getDefaultStrategyRecommendation() {
 
 /**
  * Uses AI to infer repairs from property description
- * @param {Object} lead - Lead data
- * @returns {Object} Repair inference or null
  */
 function getAIRepairInference(lead) {
   if (!isFeatureEnabled('AI Repair Inference')) {
-    return null;
+    return getDefaultRepairInference(lead);
   }
 
+  // Check cache
+  const cached = getCachedAIResult(lead['Lead ID'], 'repair');
+  if (cached) return cached;
+
   const prompt = AI_PROMPTS.REPAIR_INFERENCE
-    .replace('{{DESCRIPTION}}', lead['Description'] || lead['Notes'] || 'No description available')
+    .replace('{{DESCRIPTION}}', truncateText(lead['Description'] || lead['Notes'] || 'No description available', 500))
     .replace('{{CONDITION}}', lead['Condition'] || 'Unknown')
     .replace('{{YEAR_BUILT}}', lead['Year Built'] || 'Unknown')
     .replace('{{SQFT}}', lead['SqFt'] || '1500');
@@ -223,29 +346,48 @@ function getAIRepairInference(lead) {
     return getDefaultRepairInference(lead);
   }
 
-  return {
-    estimatedTotal: safeParseNumber(result.estimatedTotal, 0),
-    complexityRating: result.complexityRating || 'Medium',
-    majorItems: result.majorItems || [],
-    concerns: result.concerns || [],
-    confidence: result.confidence || 50
+  const inference = {
+    estimatedTotal: Math.max(0, safeParseNumber(result.estimatedTotal, 0)),
+    complexityRating: sanitizeComplexity(result.complexityRating),
+    majorItems: Array.isArray(result.majorItems) ? result.majorItems.slice(0, 10) : [],
+    concerns: Array.isArray(result.concerns) ? result.concerns.slice(0, 5) : [],
+    confidence: Math.min(100, Math.max(0, safeParseNumber(result.confidence, 50)))
   };
+
+  cacheAIResult(lead['Lead ID'], 'repair', inference);
+  return inference;
+}
+
+/**
+ * Sanitizes complexity rating
+ */
+function sanitizeComplexity(complexity) {
+  if (!complexity) return 'Medium';
+  const lower = complexity.toLowerCase();
+  if (lower.includes('light')) return 'Light';
+  if (lower.includes('heavy') || lower.includes('gut')) return 'Heavy';
+  if (lower.includes('gut')) return 'Gut Rehab';
+  return 'Medium';
 }
 
 /**
  * Returns default repair inference when AI is unavailable
- * @param {Object} lead - Lead data
- * @returns {Object} Default repair inference
  */
 function getDefaultRepairInference(lead) {
   const conditionData = normalizeCondition(lead['Condition']);
   const sqft = safeParseNumber(lead['SqFt'], 1500);
+  const yearBuilt = safeParseNumber(lead['Year Built'], 1970);
+  const age = new Date().getFullYear() - yearBuilt;
 
   let perSqft = 25;
   let complexity = 'Medium';
 
-  if (conditionData.score < 30) {
-    perSqft = 60;
+  // Adjust for condition
+  if (conditionData.score < 20) {
+    perSqft = 80;
+    complexity = 'Gut Rehab';
+  } else if (conditionData.score < 40) {
+    perSqft = 55;
     complexity = 'Heavy';
   } else if (conditionData.score < 60) {
     perSqft = 35;
@@ -255,11 +397,15 @@ function getDefaultRepairInference(lead) {
     complexity = 'Light';
   }
 
+  // Adjust for age
+  if (age > 50) perSqft *= 1.2;
+  else if (age > 30) perSqft *= 1.1;
+
   return {
     estimatedTotal: Math.round(sqft * perSqft),
     complexityRating: complexity,
     majorItems: [],
-    concerns: [],
+    concerns: age > 40 ? ['Property age may require system updates'] : [],
     confidence: 40
   };
 }
@@ -270,19 +416,20 @@ function getDefaultRepairInference(lead) {
 
 /**
  * Analyzes seller psychology using AI
- * @param {Object} lead - Lead data
- * @returns {Object} Psychology analysis or null
  */
 function getAISellerPsychology(lead) {
   if (!isFeatureEnabled('AI Seller Messaging')) {
-    return null;
+    return getDefaultSellerPsychology(lead);
   }
+
+  const cached = getCachedAIResult(lead['Lead ID'], 'psychology');
+  if (cached) return cached;
 
   const prompt = AI_PROMPTS.SELLER_PSYCHOLOGY
     .replace('{{MOTIVATION_SIGNALS}}', lead['Motivation Signals'] || 'None specified')
     .replace('{{CONDITION}}', lead['Condition'] || 'Unknown')
     .replace('{{OCCUPANCY}}', lead['Occupancy'] || 'Unknown')
-    .replace('{{NOTES}}', lead['Notes'] || lead['Description'] || 'No notes');
+    .replace('{{NOTES}}', truncateText(lead['Notes'] || lead['Description'] || 'No notes', 300));
 
   const result = callOpenAI(prompt);
 
@@ -290,47 +437,71 @@ function getAISellerPsychology(lead) {
     return getDefaultSellerPsychology(lead);
   }
 
-  // Validate response
   if (!validateJsonSchema(result, ['motivationScore', 'negotiationAngle'])) {
     logWarning('AI', 'Invalid seller psychology schema');
     return getDefaultSellerPsychology(lead);
   }
 
-  return {
-    motivationScore: safeParseNumber(result.motivationScore, 50),
+  const psychology = {
+    motivationScore: Math.min(100, Math.max(0, safeParseNumber(result.motivationScore, 50))),
     psychologyProfile: result.psychologyProfile || 'Standard',
-    painPoints: result.painPoints || [],
-    negotiationAngle: result.negotiationAngle || '',
-    urgencyLevel: result.urgencyLevel || 'Medium'
+    painPoints: Array.isArray(result.painPoints) ? result.painPoints.slice(0, 5) : [],
+    negotiationAngle: truncateText(result.negotiationAngle || '', 200),
+    urgencyLevel: sanitizeUrgency(result.urgencyLevel)
   };
+
+  cacheAIResult(lead['Lead ID'], 'psychology', psychology);
+  return psychology;
+}
+
+/**
+ * Sanitizes urgency level
+ */
+function sanitizeUrgency(urgency) {
+  if (!urgency) return 'Medium';
+  const lower = urgency.toLowerCase();
+  if (lower.includes('urgent') || lower.includes('immediate')) return 'Urgent';
+  if (lower.includes('high')) return 'High';
+  if (lower.includes('low')) return 'Low';
+  return 'Medium';
 }
 
 /**
  * Returns default seller psychology when AI is unavailable
- * @param {Object} lead - Lead data
- * @returns {Object} Default psychology analysis
  */
 function getDefaultSellerPsychology(lead) {
   const motivation = (lead['Motivation Signals'] || '').toLowerCase();
   let score = 50;
   let urgency = 'Medium';
+  let angle = 'Fair cash offer with quick close';
 
-  if (motivation.includes('must sell') || motivation.includes('urgent')) {
-    score = 85;
+  if (motivation.includes('must sell') || motivation.includes('urgent') || motivation.includes('foreclosure')) {
+    score = 90;
     urgency = 'Urgent';
-  } else if (motivation.includes('relocat') || motivation.includes('divorc')) {
+    angle = 'Fast solution to avoid foreclosure/deadline';
+  } else if (motivation.includes('relocat') || motivation.includes('job')) {
     score = 75;
     urgency = 'High';
-  } else if (motivation.includes('inherit') || motivation.includes('vacant')) {
+    angle = 'Flexibility on timeline to match their move';
+  } else if (motivation.includes('divorc')) {
+    score = 80;
+    urgency = 'High';
+    angle = 'Clean break - no showings, quick process';
+  } else if (motivation.includes('inherit') || motivation.includes('estate')) {
     score = 65;
     urgency = 'Medium';
+    angle = 'Compassionate approach - ease burden of estate';
+  } else if (motivation.includes('vacant') || motivation.includes('tired')) {
+    score = 70;
+    urgency = 'Medium';
+    angle = 'Take property as-is, no repairs needed';
   }
 
   return {
     motivationScore: score,
     psychologyProfile: 'Standard',
     painPoints: [],
-    negotiationAngle: 'Fair cash offer with quick close',
+    negotiationAngle: angle,
     urgencyLevel: urgency
   };
 }
@@ -341,14 +512,10 @@ function getDefaultSellerPsychology(lead) {
 
 /**
  * Generates a personalized seller message using AI
- * @param {Object} lead - Lead data
- * @param {string} strategy - Recommended strategy
- * @param {string} negotiationAngle - Negotiation angle
- * @returns {Object} Generated message or null
  */
 function getAISellerMessage(lead, strategy, negotiationAngle) {
   if (!isFeatureEnabled('AI Seller Messaging')) {
-    return null;
+    return getDefaultSellerMessage(lead);
   }
 
   const prompt = AI_PROMPTS.SELLER_MESSAGE
@@ -362,14 +529,13 @@ function getAISellerMessage(lead, strategy, negotiationAngle) {
     return getDefaultSellerMessage(lead);
   }
 
-  // Validate response
   if (!validateJsonSchema(result, ['message'])) {
     logWarning('AI', 'Invalid seller message schema');
     return getDefaultSellerMessage(lead);
   }
 
   return {
-    message: truncateText(result.message, 160),
+    message: truncateText(result.message || '', 160),
     tone: result.tone || 'Friendly',
     callToAction: result.callToAction || 'Schedule call'
   };
@@ -377,8 +543,7 @@ function getAISellerMessage(lead, strategy, negotiationAngle) {
 
 /**
  * Returns default seller message when AI is unavailable
- * @param {Object} lead - Lead data
- * @returns {Object} Default message
+ * (Also exported to utils.gs but defined here as primary)
  */
 function getDefaultSellerMessage(lead) {
   const address = lead['Address'] ? lead['Address'].split(',')[0] : 'your property';
@@ -396,14 +561,17 @@ function getDefaultSellerMessage(lead) {
 
 /**
  * Processes multiple leads with AI in batch (with rate limiting)
- * @param {Array} leads - Array of leads to process
- * @param {string} operation - Operation type (strategy, repair, psychology, message)
- * @returns {Array} Results array
  */
 function batchAIProcess(leads, operation) {
   const results = [];
 
   for (let i = 0; i < leads.length; i++) {
+    // Check circuit breaker before each call
+    if (CircuitBreakerState.isOpen('AI')) {
+      logWarning('AI', 'Circuit breaker open during batch - stopping');
+      break;
+    }
+
     try {
       let result;
 
@@ -451,21 +619,16 @@ function batchAIProcess(leads, operation) {
 // AI PROMPT MANAGEMENT
 // =============================================================================
 
-/**
- * Gets all AI prompts (for debugging/customization)
- * @returns {Object} All prompt templates
- */
 function getAIPrompts() {
   return AI_PROMPTS;
 }
 
-/**
- * Updates a custom prompt (saved to script properties)
- * @param {string} promptKey - Prompt key name
- * @param {string} promptText - New prompt text
- * @returns {boolean} Success status
- */
 function setCustomPrompt(promptKey, promptText) {
+  if (isStagingMode()) {
+    Logger.log('[STAGING] Would set custom prompt: ' + promptKey);
+    return true;
+  }
+
   try {
     PropertiesService.getScriptProperties().setProperty(
       'CUSTOM_PROMPT_' + promptKey,
@@ -478,15 +641,9 @@ function setCustomPrompt(promptKey, promptText) {
   }
 }
 
-/**
- * Gets a custom prompt or falls back to default
- * @param {string} promptKey - Prompt key name
- * @returns {string} Prompt text
- */
 function getCustomPrompt(promptKey) {
   const custom = PropertiesService.getScriptProperties()
     .getProperty('CUSTOM_PROMPT_' + promptKey);
-
   return custom || AI_PROMPTS[promptKey] || '';
 }
 
@@ -494,10 +651,6 @@ function getCustomPrompt(promptKey) {
 // AI USAGE TRACKING
 // =============================================================================
 
-/**
- * Gets AI usage statistics
- * @returns {Object} Usage stats
- */
 function getAIUsageStats() {
   const quota = getQuotaInfo();
 
@@ -505,50 +658,33 @@ function getAIUsageStats() {
     dailyCalls: quota.dailyCalls,
     lastReset: quota.lastReset,
     estimatedRemaining: quota.estimatedRemaining,
-    openAIConfigured: !isEmpty(CONFIG.API_KEYS.OPENAI_API_KEY || getConfigProperty('OPENAI_API_KEY'))
+    openAIConfigured: !isEmpty(CONFIG.API_KEYS.OPENAI_API_KEY || getConfigProperty('OPENAI_API_KEY')),
+    circuitBreakerStatus: CircuitBreakerState.getState('AI').state
   };
 }
 
-/**
- * Resets AI quota counter (for testing)
- */
 function resetAIQuotaCounter() {
   PropertiesService.getScriptProperties().setProperty('DAILY_API_CALLS', '0');
   PropertiesService.getScriptProperties().setProperty('LAST_QUOTA_RESET', '');
-  logInfo('AI', 'Quota counter reset');
+  CircuitBreakerState.reset('AI');
+  logInfo('AI', 'Quota counter and circuit breaker reset');
 }
 
 // =============================================================================
 // AI CACHING
 // =============================================================================
 
-/**
- * Gets cached AI result for a lead
- * @param {string} leadId - Lead ID
- * @param {string} operation - Operation type
- * @returns {Object|null} Cached result or null
- */
 function getCachedAIResult(leadId, operation) {
-  const cacheKey = `AI_${operation}_${leadId}`;
+  const cacheKey = `${CACHE_CONFIG.PREFIX}AI_${operation}_${leadId}`;
   return getCached(cacheKey);
 }
 
-/**
- * Caches an AI result for a lead
- * @param {string} leadId - Lead ID
- * @param {string} operation - Operation type
- * @param {Object} result - Result to cache
- */
 function cacheAIResult(leadId, operation, result) {
-  const cacheKey = `AI_${operation}_${leadId}`;
-  setCached(cacheKey, result, 3600); // 1 hour cache
+  const cacheKey = `${CACHE_CONFIG.PREFIX}AI_${operation}_${leadId}`;
+  setCached(cacheKey, result, CACHE_CONFIG.AI_RESPONSE_TTL);
 }
 
-/**
- * Clears all AI caches
- */
 function clearAICache() {
-  // Note: Google Apps Script doesn't have cache.getAll(), so we just log
   logInfo('AI', 'AI cache clear requested - individual caches will expire');
 }
 
@@ -556,15 +692,12 @@ function clearAICache() {
 // FALLBACK AND ERROR HANDLING
 // =============================================================================
 
-/**
- * Wraps AI call with fallback logic
- * @param {Function} aiFunction - AI function to call
- * @param {Function} fallbackFunction - Fallback function
- * @param {...*} args - Arguments to pass
- * @returns {Object} Result from AI or fallback
- */
 function withAIFallback(aiFunction, fallbackFunction, ...args) {
   try {
+    if (CircuitBreakerState.isOpen('AI')) {
+      return fallbackFunction(...args);
+    }
+
     const result = aiFunction(...args);
     if (result && !result.error) {
       return result;
@@ -576,26 +709,21 @@ function withAIFallback(aiFunction, fallbackFunction, ...args) {
   }
 }
 
-/**
- * Validates AI is available before processing
- * @returns {boolean} True if AI is available
- */
 function isAIAvailable() {
   const apiKey = CONFIG.API_KEYS.OPENAI_API_KEY || getConfigProperty('OPENAI_API_KEY');
-  return !isEmpty(apiKey);
+  return !isEmpty(apiKey) && !CircuitBreakerState.isOpen('AI');
 }
 
-/**
- * Gets AI status summary
- * @returns {Object} Status summary
- */
 function getAIStatus() {
   const available = isAIAvailable();
   const usage = getAIUsageStats();
+  const circuitState = CircuitBreakerState.getState('AI');
 
   return {
     available: available,
     configured: usage.openAIConfigured,
+    circuitOpen: circuitState.state === 'OPEN',
+    circuitState: circuitState.state,
     dailyCalls: usage.dailyCalls,
     features: {
       strategyRecommendations: isFeatureEnabled('AI Strategy Recommendations'),
@@ -611,15 +739,24 @@ function getAIStatus() {
 
 /**
  * Runs full AI analysis on a single lead
- * Combines all AI features for comprehensive insights
- * @param {Object} lead - Lead data
- * @param {Object} calculations - Pre-calculated values
- * @returns {Object} Comprehensive AI analysis
  */
 function runFullAIAnalysis(lead, calculations) {
   if (!isAIAvailable()) {
     logWarning('AI', 'AI not available for full analysis');
-    return null;
+    return {
+      leadId: lead['Lead ID'],
+      strategy: getDefaultStrategyRecommendation(lead, calculations).strategy,
+      confidence: 40,
+      dealClassifier: 'SOLID DEAL',
+      repairEstimate: getDefaultRepairInference(lead).estimatedTotal,
+      repairComplexity: getDefaultRepairInference(lead).complexityRating,
+      motivationScore: getDefaultSellerPsychology(lead).motivationScore,
+      negotiationAngle: getDefaultSellerPsychology(lead).negotiationAngle,
+      urgencyLevel: getDefaultSellerPsychology(lead).urgencyLevel,
+      sellerMessage: getDefaultSellerMessage(lead).message,
+      aiProcessed: false,
+      timestamp: new Date()
+    };
   }
 
   const results = {};
@@ -645,7 +782,6 @@ function runFullAIAnalysis(lead, calculations) {
     negotiationAngle
   );
 
-  // Combine into comprehensive result
   return {
     leadId: lead['Lead ID'],
     strategy: results.strategy?.strategy,
