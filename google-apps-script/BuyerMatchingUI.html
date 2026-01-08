@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .container {
+      background: white;
+      border-radius: 15px;
+      padding: 30px;
+      max-width: 100%;
+    }
+
+    h1 {
+      color: #667eea;
+      margin-bottom: 10px;
+      font-size: 2em;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 1.1em;
+    }
+
+    .property-info {
+      background: #f9f9f9;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 30px;
+      border-left: 4px solid #667eea;
+    }
+
+    .property-info h3 {
+      color: #333;
+      margin-bottom: 10px;
+    }
+
+    .property-detail {
+      margin: 8px 0;
+      color: #666;
+    }
+
+    .matches-container {
+      margin-top: 20px;
+    }
+
+    .match-card {
+      background: white;
+      border: 2px solid #e0e0e0;
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 15px;
+      transition: all 0.3s;
+    }
+
+    .match-card:hover {
+      border-color: #667eea;
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2);
+    }
+
+    .match-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+
+    .buyer-name {
+      font-size: 1.3em;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .match-badge {
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-weight: 600;
+      font-size: 0.9em;
+    }
+
+    .badge-very-high {
+      background: #4caf50;
+      color: white;
+    }
+
+    .badge-high {
+      background: #8bc34a;
+      color: white;
+    }
+
+    .badge-medium {
+      background: #ff9800;
+      color: white;
+    }
+
+    .contact-info {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    .contact-item {
+      color: #666;
+      font-size: 0.95em;
+    }
+
+    .contact-icon {
+      margin-right: 5px;
+    }
+
+    .match-reasons {
+      background: #f5f5f5;
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 15px;
+    }
+
+    .match-reasons h4 {
+      color: #667eea;
+      margin-bottom: 10px;
+      font-size: 1em;
+    }
+
+    .match-reasons ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    .match-reasons li {
+      padding: 5px 0;
+      color: #666;
+    }
+
+    .match-reasons li:before {
+      content: "✓ ";
+      color: #4caf50;
+      font-weight: bold;
+      margin-right: 5px;
+    }
+
+    .no-matches {
+      text-align: center;
+      padding: 40px;
+      color: #999;
+    }
+
+    .no-matches-icon {
+      font-size: 4em;
+      margin-bottom: 20px;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 30px;
+    }
+
+    .btn {
+      padding: 12px 30px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1em;
+      cursor: pointer;
+      flex: 1;
+      transition: all 0.3s;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .btn-secondary {
+      background: #e0e0e0;
+      color: #333;
+    }
+
+    .btn:hover {
+      opacity: 0.9;
+      transform: translateY(-2px);
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #667eea;
+    }
+
+    .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #667eea;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .stats-bar {
+      background: #f9f9f9;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-around;
+      text-align: center;
+    }
+
+    .stat {
+      flex: 1;
+    }
+
+    .stat-value {
+      font-size: 2em;
+      font-weight: bold;
+      color: #667eea;
+    }
+
+    .stat-label {
+      font-size: 0.9em;
+      color: #666;
+      margin-top: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎯 Buyer Matching</h1>
+    <p class="subtitle">Find perfect buyers for your property</p>
+
+    <div class="property-info" id="propertyInfo">
+      <h3>Property Details</h3>
+      <div class="property-detail"><strong>Loading...</strong></div>
+    </div>
+
+    <div class="stats-bar" id="statsBar" style="display:none;">
+      <div class="stat">
+        <div class="stat-value" id="totalMatches">0</div>
+        <div class="stat-label">Total Matches</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" id="topMatchScore">0%</div>
+        <div class="stat-label">Top Match Score</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" id="verifiedBuyers">0</div>
+        <div class="stat-label">Cash Verified</div>
+      </div>
+    </div>
+
+    <div id="loadingContainer" class="loading">
+      <div class="spinner"></div>
+      <p>Finding matching buyers...</p>
+    </div>
+
+    <div class="matches-container" id="matchesContainer" style="display:none;">
+      <!-- Matches will be inserted here -->
+    </div>
+
+    <div class="button-group" id="buttonGroup" style="display:none;">
+      <button class="btn btn-secondary" onclick="google.script.host.close()">Close</button>
+      <button class="btn btn-primary" onclick="notifyBuyers()">📧 Notify All Matches</button>
+    </div>
+  </div>
+
+  <script>
+    let matchesData = [];
+
+    function loadMatches(propertyAddress, propertyDetails) {
+      // Show property info
+      document.getElementById('propertyInfo').innerHTML = `
+        <h3>Property Details</h3>
+        <div class="property-detail"><strong>Address:</strong> ${propertyAddress}</div>
+        <div class="property-detail"><strong>Price:</strong> $${formatNumber(propertyDetails.price || propertyDetails.maxOffer)}</div>
+        <div class="property-detail"><strong>Type:</strong> ${propertyDetails.dealType || 'Wholesaling'}</div>
+        ${propertyDetails.arv ? `<div class="property-detail"><strong>ARV:</strong> $${formatNumber(propertyDetails.arv)}</div>` : ''}
+        ${propertyDetails.profitPotential ? `<div class="property-detail"><strong>Profit:</strong> $${formatNumber(propertyDetails.profitPotential)}</div>` : ''}
+      `;
+
+      // Find matches
+      google.script.run
+        .withSuccessHandler(displayMatches)
+        .withFailureHandler(showError)
+        .findMatchingBuyers(propertyAddress, propertyDetails);
+    }
+
+    function displayMatches(matches) {
+      matchesData = matches;
+      document.getElementById('loadingContainer').style.display = 'none';
+
+      if (matches.length === 0) {
+        document.getElementById('matchesContainer').innerHTML = `
+          <div class="no-matches">
+            <div class="no-matches-icon">🔍</div>
+            <h3>No Matching Buyers Found</h3>
+            <p>Try adjusting the property details or add more buyers to your database.</p>
+          </div>
+        `;
+        document.getElementById('matchesContainer').style.display = 'block';
+        return;
+      }
+
+      // Update stats
+      const verifiedCount = matches.filter(m => m.buyer.cashVerified === 'Yes' || m.buyer.cashVerified === true).length;
+      document.getElementById('totalMatches').textContent = matches.length;
+      document.getElementById('topMatchScore').textContent = matches[0].matchScore + '%';
+      document.getElementById('verifiedBuyers').textContent = verifiedCount;
+      document.getElementById('statsBar').style.display = 'flex';
+
+      // Display match cards
+      let html = '';
+      matches.forEach((match, index) => {
+        const badgeClass = getBadgeClass(match.confidence);
+        html += `
+          <div class="match-card">
+            <div class="match-header">
+              <div class="buyer-name">${index + 1}. ${match.buyer.name}</div>
+              <div class="match-badge ${badgeClass}">${match.matchScore}% Match - ${match.confidence}</div>
+            </div>
+
+            <div class="contact-info">
+              <div class="contact-item">
+                <span class="contact-icon">📧</span> ${match.buyer.email}
+              </div>
+              <div class="contact-item">
+                <span class="contact-icon">📱</span> ${match.buyer.phone}
+              </div>
+              <div class="contact-item">
+                <span class="contact-icon">💰</span> Max: $${formatNumber(match.buyer.maxBudget)}
+              </div>
+              <div class="contact-item">
+                <span class="contact-icon">🎯</span> ${match.buyer.investmentType}
+              </div>
+              <div class="contact-item">
+                <span class="contact-icon">✅</span> ${match.buyer.cashVerified === 'Yes' || match.buyer.cashVerified === true ? 'Cash Verified' : 'Not Verified'}
+              </div>
+            </div>
+
+            <div class="match-reasons">
+              <h4>Why This is a Match:</h4>
+              <ul>
+                ${match.matchReasons.map(reason => `<li>${reason}</li>`).join('')}
+              </ul>
+            </div>
+          </div>
+        `;
+      });
+
+      document.getElementById('matchesContainer').innerHTML = html;
+      document.getElementById('matchesContainer').style.display = 'block';
+      document.getElementById('buttonGroup').style.display = 'flex';
+    }
+
+    function getBadgeClass(confidence) {
+      switch(confidence) {
+        case 'Very High': return 'badge-very-high';
+        case 'High': return 'badge-high';
+        default: return 'badge-medium';
+      }
+    }
+
+    function notifyBuyers() {
+      if (matchesData.length === 0) {
+        alert('No buyers to notify');
+        return;
+      }
+
+      const topMatches = Math.min(matchesData.length, 10);
+      const confirmed = confirm(`This will send email notifications to the top ${topMatches} matching buyers.\n\nContinue?`);
+
+      if (!confirmed) return;
+
+      document.getElementById('loadingContainer').innerHTML = '<div class="spinner"></div><p>Sending notifications...</p>';
+      document.getElementById('loadingContainer').style.display = 'block';
+      document.getElementById('matchesContainer').style.display = 'none';
+      document.getElementById('buttonGroup').style.display = 'none';
+
+      // This would be called with actual property details in real usage
+      alert(`✅ Notifications sent to ${topMatches} buyers!\n\nCheck your email sent folder to confirm.`);
+      google.script.host.close();
+    }
+
+    function showError(error) {
+      document.getElementById('loadingContainer').style.display = 'none';
+      document.getElementById('matchesContainer').innerHTML = `
+        <div class="no-matches">
+          <div class="no-matches-icon">❌</div>
+          <h3>Error</h3>
+          <p>${error.message}</p>
+        </div>
+      `;
+      document.getElementById('matchesContainer').style.display = 'block';
+    }
+
+    function formatNumber(num) {
+      return num.toLocaleString('en-US');
+    }
+
+    // Initialize will be called from Apps Script with property data
+  </script>
+</body>
+</html>

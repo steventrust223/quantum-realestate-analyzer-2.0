@@ -21,6 +21,11 @@ function onOpen() {
       .addItem('Update Deal Status', 'updateDealStatus')
       .addItem('View Active Deals', 'viewActiveDeals'))
     .addSeparator()
+    .addSubMenu(ui.createMenu('Buyer Matching')
+      .addItem('🎯 Match Property to Buyers', 'matchPropertyPrompt')
+      .addItem('Bulk Match Active Deals', 'bulkMatchActiveDeals')
+      .addItem('View Match History', 'viewMatchHistory'))
+    .addSeparator()
     .addSubMenu(ui.createMenu('CRM')
       .addItem('Add Seller', 'addSeller')
       .addItem('Add Buyer', 'addBuyer')
@@ -101,6 +106,15 @@ function analyzeProperty() {
 
     // Show results
     showAnalysisResults(analysisResult);
+
+    // Offer buyer matching
+    const matchResponse = ui.alert('Buyer Matching',
+      'Would you like to find matching buyers for this property?',
+      ui.ButtonSet.YES_NO);
+
+    if (matchResponse == ui.Button.YES) {
+      matchPropertyToBuyers(analysisResult);
+    }
   }
 }
 
