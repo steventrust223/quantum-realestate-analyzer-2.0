@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+
+    .container {
+      background: white;
+      border-radius: 10px;
+      padding: 30px;
+      max-width: 100%;
+    }
+
+    h1 {
+      color: #667eea;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      color: #333;
+      font-weight: 500;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      font-size: 14px;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 30px;
+    }
+
+    .btn {
+      padding: 12px 30px;
+      border: none;
+      border-radius: 5px;
+      font-size: 1em;
+      cursor: pointer;
+      flex: 1;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .btn-secondary {
+      background: #e0e0e0;
+      color: #333;
+    }
+
+    .btn:hover {
+      opacity: 0.9;
+    }
+
+    .required {
+      color: red;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📋 Add New Deal</h1>
+    <p class="subtitle">Enter deal information</p>
+
+    <form id="dealForm">
+      <div class="form-group">
+        <label>Property Address <span class="required">*</span></label>
+        <input type="text" id="address" required placeholder="123 Main St, City, State ZIP">
+      </div>
+
+      <div class="form-group">
+        <label>Deal Type <span class="required">*</span></label>
+        <select id="dealType" required>
+          <option value="">Select type...</option>
+          <option value="Wholesaling">Wholesaling</option>
+          <option value="Sub2">Subject-to (Sub2)</option>
+          <option value="Fix & Flip">Fix & Flip</option>
+          <option value="Buy & Hold">Buy & Hold</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Seller Name <span class="required">*</span></label>
+        <input type="text" id="sellerName" required placeholder="John Doe">
+      </div>
+
+      <div class="form-group">
+        <label>Offer Amount <span class="required">*</span></label>
+        <input type="number" id="offerAmount" required placeholder="250000" step="1000">
+      </div>
+
+      <div class="form-group">
+        <label>Assignment Fee / Monthly Spread <span class="required">*</span></label>
+        <input type="number" id="fee" required placeholder="15000" step="100">
+      </div>
+
+      <div class="form-group">
+        <label>Expected Close Date</label>
+        <input type="date" id="closeDate">
+      </div>
+
+      <div class="form-group">
+        <label>Status</label>
+        <select id="status">
+          <option value="New">New Lead</option>
+          <option value="Contact Made">Contact Made</option>
+          <option value="Under Contract">Under Contract</option>
+          <option value="Marketed">Being Marketed</option>
+          <option value="Assigned">Assigned to Buyer</option>
+          <option value="Closing">In Closing</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Assigned To</label>
+        <input type="text" id="assignedTo" placeholder="Team member name">
+      </div>
+
+      <div class="form-group">
+        <label>Notes</label>
+        <textarea id="notes" placeholder="Additional details about this deal..."></textarea>
+      </div>
+
+      <div class="button-group">
+        <button type="button" class="btn btn-secondary" onclick="google.script.host.close()">Cancel</button>
+        <button type="submit" class="btn btn-primary">💾 Save Deal</button>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    document.getElementById('dealForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      const dealData = {
+        address: document.getElementById('address').value,
+        dealType: document.getElementById('dealType').value,
+        sellerName: document.getElementById('sellerName').value,
+        offerAmount: parseFloat(document.getElementById('offerAmount').value),
+        fee: parseFloat(document.getElementById('fee').value),
+        closeDate: document.getElementById('closeDate').value,
+        status: document.getElementById('status').value,
+        assignedTo: document.getElementById('assignedTo').value,
+        notes: document.getElementById('notes').value
+      };
+
+      google.script.run
+        .withSuccessHandler(onSuccess)
+        .withFailureHandler(onFailure)
+        .addDealToSheet(dealData);
+    });
+
+    function onSuccess(dealId) {
+      alert('Deal added successfully! Deal ID: ' + dealId);
+      google.script.host.close();
+    }
+
+    function onFailure(error) {
+      alert('Error adding deal: ' + error.message);
+    }
+  </script>
+</body>
+</html>

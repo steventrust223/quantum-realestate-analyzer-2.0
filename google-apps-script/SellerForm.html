@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+
+    .container {
+      background: white;
+      border-radius: 10px;
+      padding: 30px;
+    }
+
+    h1 {
+      color: #667eea;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      color: #333;
+      font-weight: 500;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      font-size: 14px;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 30px;
+    }
+
+    .btn {
+      padding: 12px 30px;
+      border: none;
+      border-radius: 5px;
+      font-size: 1em;
+      cursor: pointer;
+      flex: 1;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .btn-secondary {
+      background: #e0e0e0;
+      color: #333;
+    }
+
+    .required {
+      color: red;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>👤 Add Seller</h1>
+    <p class="subtitle">Add new seller to CRM</p>
+
+    <form id="sellerForm">
+      <div class="form-group">
+        <label>Full Name <span class="required">*</span></label>
+        <input type="text" id="name" required>
+      </div>
+
+      <div class="form-group">
+        <label>Phone <span class="required">*</span></label>
+        <input type="tel" id="phone" required placeholder="(555) 123-4567">
+      </div>
+
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="email" placeholder="seller@example.com">
+      </div>
+
+      <div class="form-group">
+        <label>Property Address <span class="required">*</span></label>
+        <input type="text" id="propertyAddress" required>
+      </div>
+
+      <div class="form-group">
+        <label>Motivation <span class="required">*</span></label>
+        <select id="motivation" required>
+          <option value="">Select motivation...</option>
+          <option value="Financial Distress">Financial Distress</option>
+          <option value="Inherited Property">Inherited Property</option>
+          <option value="Downsizing">Downsizing</option>
+          <option value="Relocation">Relocation</option>
+          <option value="Divorce">Divorce</option>
+          <option value="Foreclosure">Foreclosure</option>
+          <option value="Tired Landlord">Tired Landlord</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Lead Source</label>
+        <select id="leadSource">
+          <option value="Direct Mail">Direct Mail</option>
+          <option value="Online Marketing">Online Marketing</option>
+          <option value="Referral">Referral</option>
+          <option value="Cold Call">Cold Call</option>
+          <option value="Networking">Networking</option>
+          <option value="Driving for Dollars">Driving for Dollars</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Status</label>
+        <select id="status">
+          <option value="New Lead">New Lead</option>
+          <option value="Contacted">Contacted</option>
+          <option value="Qualified">Qualified</option>
+          <option value="Not Qualified">Not Qualified</option>
+          <option value="Under Contract">Under Contract</option>
+          <option value="Closed">Closed</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Notes</label>
+        <textarea id="notes" rows="4"></textarea>
+      </div>
+
+      <div class="button-group">
+        <button type="button" class="btn btn-secondary" onclick="google.script.host.close()">Cancel</button>
+        <button type="submit" class="btn btn-primary">💾 Save Seller</button>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    document.getElementById('sellerForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      const sellerData = {
+        name: document.getElementById('name').value,
+        phone: document.getElementById('phone').value,
+        email: document.getElementById('email').value,
+        propertyAddress: document.getElementById('propertyAddress').value,
+        motivation: document.getElementById('motivation').value,
+        leadSource: document.getElementById('leadSource').value,
+        status: document.getElementById('status').value,
+        notes: document.getElementById('notes').value
+      };
+
+      google.script.run
+        .withSuccessHandler(onSuccess)
+        .withFailureHandler(onFailure)
+        .addSellerToSheet(sellerData);
+    });
+
+    function onSuccess(sellerId) {
+      alert('Seller added successfully! ID: ' + sellerId);
+      google.script.host.close();
+    }
+
+    function onFailure(error) {
+      alert('Error: ' + error.message);
+    }
+  </script>
+</body>
+</html>
