@@ -1,0 +1,31 @@
+{
+  "name": "quantum-realestate-analyzer",
+  "version": "2.0.0",
+  "description": "Ultimate Wholesaling & Sub2 Real Estate Analysis System - Professional-grade property analysis, deal calculation, and business management platform",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "npx serve public -p 3000",
+    "dev": "npx serve public -p 3000",
+    "test": "echo \"Tests coming soon\" && exit 0"
+  },
+  "keywords": [
+    "real-estate",
+    "wholesaling",
+    "sub2",
+    "subject-to",
+    "property-analysis",
+    "deal-calculator",
+    "investment",
+    "crm"
+  ],
+  "author": "Quantum Real Estate Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/steventrust223/quantum-realestate-analyzer-2.0.git"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

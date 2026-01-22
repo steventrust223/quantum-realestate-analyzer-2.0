@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Quantum Real Estate Analyzer v2.0 - Ultimate Wholesaling & Sub2 System for Real Estate Professionals">
+  <meta name="theme-color" content="#667eea">
+  <title>Quantum Real Estate Analyzer v2.0</title>
+
+  <!-- Preconnect to Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    /* Additional page-specific styles */
+    .results-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: var(--spacing-md);
+      margin-bottom: var(--spacing-lg);
+    }
+
+    .result-item {
+      background: var(--gray-50);
+      padding: var(--spacing-md);
+      border-radius: var(--radius-md);
+      text-align: center;
+    }
+
+    .result-label {
+      display: block;
+      font-size: 0.75rem;
+      color: var(--gray-500);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: var(--spacing-xs);
+    }
+
+    .result-value {
+      display: block;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--gray-900);
+    }
+
+    .recommendation {
+      text-align: center;
+      padding: var(--spacing-md);
+      border-radius: var(--radius-md);
+      font-size: 1rem;
+    }
+
+    .recommendation.badge-success { background: var(--success-light); color: var(--success); }
+    .recommendation.badge-warning { background: var(--warning-light); color: var(--warning); }
+    .recommendation.badge-danger { background: var(--danger-light); color: var(--danger); }
+
+    .quick-result {
+      display: flex;
+      justify-content: space-between;
+      padding: var(--spacing-sm) 0;
+      border-bottom: 1px solid var(--gray-100);
+    }
+
+    .quick-result:last-child { border-bottom: none; }
+
+    .tab-nav {
+      display: flex;
+      border-bottom: 2px solid var(--gray-200);
+      margin-bottom: var(--spacing-lg);
+    }
+
+    .tab-btn {
+      padding: var(--spacing-md) var(--spacing-lg);
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: var(--gray-500);
+      position: relative;
+      transition: color var(--transition-fast);
+    }
+
+    .tab-btn:hover { color: var(--gray-700); }
+
+    .tab-btn.active {
+      color: var(--primary-color);
+    }
+
+    .tab-btn.active::after {
+      content: '';
+      position: absolute;
+      bottom: -2px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--primary-color);
+    }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: var(--spacing-md);
+    }
+
+    .mobile-menu-btn {
+      display: none;
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      padding: var(--spacing-sm);
+    }
+
+    @media (max-width: 1024px) {
+      .mobile-menu-btn { display: block; }
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: var(--spacing-2xl);
+      color: var(--gray-500);
+    }
+
+    .empty-state-icon {
+      font-size: 3rem;
+      margin-bottom: var(--spacing-md);
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <div class="sidebar-brand-icon">🏡</div>
+        <div class="sidebar-brand-text">
+          <h1>Quantum REA</h1>
+          <span>v2.0 Pro</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section">
+          <span class="nav-section-title">Main</span>
+          <button class="nav-link active" data-page="dashboard">
+            <span class="nav-link-icon">📊</span>
+            Dashboard
+          </button>
+          <button class="nav-link" data-page="analyzer">
+            <span class="nav-link-icon">🔍</span>
+            Property Analyzer
+          </button>
+          <button class="nav-link" data-page="calculator">
+            <span class="nav-link-icon">🧮</span>
+            Deal Calculator
+          </button>
+        </div>
+
+        <div class="nav-section">
+          <span class="nav-section-title">Management</span>
+          <button class="nav-link" data-page="deals">
+            <span class="nav-link-icon">📋</span>
+            Deals Pipeline
+            <span class="nav-link-badge">5</span>
+          </button>
+          <button class="nav-link" data-page="buyers">
+            <span class="nav-link-icon">👥</span>
+            Buyer Database
+          </button>
+          <button class="nav-link" data-page="companyhub">
+            <span class="nav-link-icon">🏢</span>
+            CompanyHub
+          </button>
+        </div>
+
+        <div class="nav-section">
+          <span class="nav-section-title">Tools</span>
+          <button class="nav-link" data-page="marketing">
+            <span class="nav-link-icon">📢</span>
+            Marketing
+          </button>
+          <button class="nav-link" data-page="reports">
+            <span class="nav-link-icon">📈</span>
+            Reports
+          </button>
+          <button class="nav-link" data-page="settings">
+            <span class="nav-link-icon">⚙️</span>
+            Settings
+          </button>
+        </div>
+      </nav>
+
+      <div style="margin-top: auto; padding-top: var(--spacing-lg); border-top: 1px solid var(--gray-700);">
+        <button class="nav-link" onclick="App.exportData()">
+          <span class="nav-link-icon">💾</span>
+          Export Data
+        </button>
+        <button class="nav-link" onclick="App.resetDemo()">
+          <span class="nav-link-icon">🔄</span>
+          Reset Demo
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Top Bar -->
+      <div class="top-bar">
+        <button class="mobile-menu-btn" id="menu-toggle" aria-label="Toggle menu">☰</button>
+        <div class="page-title">
+          <h2>Dashboard</h2>
+          <span>Welcome back! Here's your business overview.</span>
+        </div>
+        <div class="top-bar-actions">
+          <div class="search-box">
+            <span class="search-box-icon">🔍</span>
+            <input type="text" placeholder="Search deals, buyers... (Ctrl+K)" aria-label="Search">
+          </div>
+          <button class="btn btn-primary" onclick="UI.openModal('new-deal-modal')">
+            + New Deal
+          </button>
+        </div>
+      </div>
+
+      <!-- Dashboard Page -->
+      <div id="dashboard-page" class="page-content">
+        <!-- Stats Cards -->
+        <div class="stats-grid">
+          <div class="stat-card primary">
+            <div class="stat-icon primary">📊</div>
+            <div class="stat-content">
+              <div class="stat-label">Active Deals</div>
+              <div class="stat-value" id="stat-active-deals">0</div>
+              <span class="stat-change positive">↑ 12% this month</span>
+            </div>
+          </div>
+
+          <div class="stat-card success">
+            <div class="stat-icon success">💰</div>
+            <div class="stat-content">
+              <div class="stat-label">Total Revenue</div>
+              <div class="stat-value" id="stat-revenue">$0</div>
+              <span class="stat-change positive">↑ 23% MoM</span>
+            </div>
+          </div>
+
+          <div class="stat-card warning">
+            <div class="stat-icon warning">🏘️</div>
+            <div class="stat-content">
+              <div class="stat-label">Properties Analyzed</div>
+              <div class="stat-value" id="stat-properties">0</div>
+              <span class="stat-change positive">↑ 8 this week</span>
+            </div>
+          </div>
+
+          <div class="stat-card info">
+            <div class="stat-icon info">👥</div>
+            <div class="stat-content">
+              <div class="stat-label">Active Buyers</div>
+              <div class="stat-value" id="stat-buyers">0</div>
+              <span class="stat-change positive">↑ 3 new</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="card mb-3" style="margin-bottom: var(--spacing-xl);">
+          <div class="card-header">
+            <h3 class="card-title">Quick Actions</h3>
+          </div>
+          <div class="card-body">
+            <div class="quick-actions">
+              <button class="quick-action-btn" onclick="App.navigateTo('analyzer')">
+                <div class="quick-action-icon">🔍</div>
+                <span class="quick-action-label">Analyze Property</span>
+              </button>
+              <button class="quick-action-btn" onclick="App.navigateTo('calculator')">
+                <div class="quick-action-icon">🧮</div>
+                <span class="quick-action-label">Quick Calculator</span>
+              </button>
+              <button class="quick-action-btn" onclick="UI.openModal('new-deal-modal')">
+                <div class="quick-action-icon">📋</div>
+                <span class="quick-action-label">Add Deal</span>
+              </button>
+              <button class="quick-action-btn" onclick="UI.openModal('new-buyer-modal')">
+                <div class="quick-action-icon">👤</div>
+                <span class="quick-action-label">Add Buyer</span>
+              </button>
+              <button class="quick-action-btn" onclick="App.navigateTo('companyhub')">
+                <div class="quick-action-icon">🏢</div>
+                <span class="quick-action-label">CompanyHub</span>
+              </button>
+              <button class="quick-action-btn" onclick="App.navigateTo('reports')">
+                <div class="quick-action-icon">📈</div>
+                <span class="quick-action-label">View Reports</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Deals & Activity -->
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Recent Deals</h3>
+              <button class="btn btn-secondary" onclick="App.navigateTo('deals')">View All</button>
+            </div>
+            <div class="card-body">
+              <div class="table-container">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Property</th>
+                      <th>Type</th>
+                      <th>Status</th>
+                      <th>ARV</th>
+                      <th>Fee</th>
+                      <th>Date</th>
+                    </tr>
+                  </thead>
+                  <tbody id="deals-table-body">
+                    <!-- Populated by JavaScript -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Recent Activity</h3>
+            </div>
+            <div class="card-body">
+              <ul class="activity-feed" id="activity-feed">
+                <!-- Populated by JavaScript -->
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Property Analyzer Page -->
+      <div id="analyzer-page" class="page-content hidden">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Property Analysis Tool</h3>
+          </div>
+          <div class="card-body">
+            <!-- Tabs -->
+            <div class="tab-nav">
+              <button class="tab-btn active" onclick="switchTab('wholesale')">Wholesale Analysis</button>
+              <button class="tab-btn" onclick="switchTab('sub2')">Subject-To Analysis</button>
+            </div>
+
+            <!-- Wholesale Tab -->
+            <div id="wholesale-tab" class="tab-content active">
+              <form id="wholesale-form" onsubmit="event.preventDefault(); App.analyzeWholesale();">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label class="form-label">After Repair Value (ARV)</label>
+                    <div class="input-group">
+                      <input type="number" name="arv" class="form-input" placeholder="285000" required>
+                      <span class="input-group-addon">$</span>
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Estimated Repairs</label>
+                    <div class="input-group">
+                      <input type="number" name="repairs" class="form-input" placeholder="35000" required>
+                      <span class="input-group-addon">$</span>
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Purchase Price</label>
+                    <div class="input-group">
+                      <input type="number" name="purchase" class="form-input" placeholder="150000" required>
+                      <span class="input-group-addon">$</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label class="form-label">Closing Costs (Optional)</label>
+                    <div class="input-group">
+                      <input type="number" name="closing" class="form-input" placeholder="5000">
+                      <span class="input-group-addon">$</span>
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Holding Costs (Optional)</label>
+                    <div class="input-group">
+                      <input type="number" name="holding" class="form-input" placeholder="3000">
+                      <span class="input-group-addon">$</span>
+                    </div>
+                  </div>
+                </div>
+                <button type="submit" class="btn btn-primary btn-lg">Analyze Deal</button>
+              </form>
+
+              <div id="wholesale-results" class="hidden" style="margin-top: var(--spacing-xl);"></div>
+            </div>
+
+            <!-- Sub2 Tab -->
+            <div id="sub2-tab" class="tab-content">
+              <form id="sub2-form" onsubmit="event.preventDefault(); App.analyzeSub2();">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label class="form-label">Property Value (ARV)</label>
+                    <div class="input-group">
+                      <input type="number" name="arv" class="form-input" placeholder="320000" required>
+                      <span class="input-group-addon">$</span>
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Existing Mortgage Balance</label>
+                    <div class="input-group">
+                      <input type="number" name="mortgage" class="form-input" placeholder="245000" required>
+                      <span class="input-group-addon">$</span>
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Monthly Payment (PITI)</label>
+                    <div class="input-group">
+                      <input type="number" name="payment" class="form-input" placeholder="1850" required>
+                      <span class="input-group-addon">$</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label class="form-label">Interest Rate (%)</label>
+                    <div class="input-group">
+                      <input type="number" step="0.1" name="rate" class="form-input" placeholder="4.5">
+                      <span class="input-group-addon">%</span>
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Remaining Years</label>
+                    <input type="number" name="years" class="form-input" placeholder="25">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Fair Market Rent</label>
+                    <div class="input-group">
+                      <input type="number" name="rent" class="form-input" placeholder="2200" required>
+                      <span class="input-group-addon">$</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label class="form-label">Repair Costs (Optional)</label>
+                    <div class="input-group">
+                      <input type="number" name="repairs" class="form-input" placeholder="5000">
+                      <span class="input-group-addon">$</span>
+                    </div>
+                  </div>
+                </div>
+                <button type="submit" class="btn btn-primary btn-lg">Analyze Sub2 Deal</button>
+              </form>
+
+              <div id="sub2-results" class="hidden" style="margin-top: var(--spacing-xl);"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Deal Calculator Page -->
+      <div id="calculator-page" class="page-content hidden">
+        <div class="grid-2">
+          <!-- Quick MAO Calculator -->
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Quick MAO Calculator</h3>
+            </div>
+            <div class="card-body">
+              <p style="color: var(--gray-500); margin-bottom: var(--spacing-lg);">
+                Calculate Maximum Allowable Offer instantly using the 70/75/80% rules.
+              </p>
+              <div class="form-group">
+                <label class="form-label">After Repair Value (ARV)</label>
+                <div class="input-group">
+                  <input type="number" id="quick-arv" class="form-input" placeholder="250000" oninput="App.quickMAO()">
+                  <span class="input-group-addon">$</span>
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Estimated Repairs</label>
+                <div class="input-group">
+                  <input type="number" id="quick-repairs" class="form-input" placeholder="30000" oninput="App.quickMAO()">
+                  <span class="input-group-addon">$</span>
+                </div>
+              </div>
+              <div id="quick-results" style="margin-top: var(--spacing-lg);">
+                <div class="empty-state">
+                  <div class="empty-state-icon">🧮</div>
+                  <p>Enter values above to calculate MAO</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Mortgage Payment Calculator -->
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Mortgage Payment Calculator</h3>
+            </div>
+            <div class="card-body">
+              <p style="color: var(--gray-500); margin-bottom: var(--spacing-lg);">
+                Calculate monthly mortgage payments for any loan scenario.
+              </p>
+              <div class="form-group">
+                <label class="form-label">Loan Amount</label>
+                <div class="input-group">
+                  <input type="number" id="calc-principal" class="form-input" placeholder="200000">
+                  <span class="input-group-addon">$</span>
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Interest Rate (Annual)</label>
+                <div class="input-group">
+                  <input type="number" step="0.125" id="calc-rate" class="form-input" placeholder="6.5">
+                  <span class="input-group-addon">%</span>
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Loan Term</label>
+                <div class="input-group">
+                  <input type="number" id="calc-years" class="form-input" placeholder="30">
+                  <span class="input-group-addon">years</span>
+                </div>
+              </div>
+              <button class="btn btn-primary" onclick="App.calculatePayment()">Calculate Payment</button>
+              <div id="payment-result" style="margin-top: var(--spacing-lg); font-size: 1.5rem; font-weight: 700; color: var(--primary-color);"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Formulas Reference -->
+        <div class="card" style="margin-top: var(--spacing-xl);">
+          <div class="card-header">
+            <h3 class="card-title">Quick Reference Formulas</h3>
+          </div>
+          <div class="card-body">
+            <div class="grid-3">
+              <div class="result-item">
+                <span class="result-label">MAO Formula (70%)</span>
+                <span class="result-value" style="font-size: 1rem;">ARV × 0.70 - Repairs</span>
+              </div>
+              <div class="result-item">
+                <span class="result-label">Assignment Fee</span>
+                <span class="result-value" style="font-size: 1rem;">MAO - Purchase Price</span>
+              </div>
+              <div class="result-item">
+                <span class="result-label">Equity Position</span>
+                <span class="result-value" style="font-size: 1rem;">ARV - Mortgage Balance</span>
+              </div>
+              <div class="result-item">
+                <span class="result-label">Cash Flow</span>
+                <span class="result-value" style="font-size: 1rem;">Rent - PITI - Expenses</span>
+              </div>
+              <div class="result-item">
+                <span class="result-label">Cap Rate</span>
+                <span class="result-value" style="font-size: 1rem;">NOI / Property Value</span>
+              </div>
+              <div class="result-item">
+                <span class="result-label">Cash on Cash</span>
+                <span class="result-value" style="font-size: 1rem;">Annual CF / Cash Invested</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Deals Pipeline Page -->
+      <div id="deals-page" class="page-content hidden">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Deals Pipeline</h3>
+            <button class="btn btn-primary" onclick="UI.openModal('new-deal-modal')">+ Add Deal</button>
+          </div>
+          <div class="card-body">
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Property</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th>ARV</th>
+                    <th>Fee/Equity</th>
+                    <th>Date Added</th>
+                  </tr>
+                </thead>
+                <tbody id="deals-table-body-full">
+                  <!-- Populated by JavaScript -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Buyers Database Page -->
+      <div id="buyers-page" class="page-content hidden">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Buyer Database</h3>
+            <button class="btn btn-primary" onclick="UI.openModal('new-buyer-modal')">+ Add Buyer</button>
+          </div>
+          <div class="card-body">
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Phone</th>
+                    <th>Type</th>
+                    <th>Max Budget</th>
+                    <th>Areas</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="buyers-table-body">
+                  <!-- Populated by JavaScript -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CompanyHub Page -->
+      <div id="companyhub-page" class="page-content hidden">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">CompanyHub</h3>
+          </div>
+          <div class="card-body">
+            <div class="empty-state">
+              <div class="empty-state-icon">🏢</div>
+              <h4>CompanyHub Module</h4>
+              <p>Centralized company management for your real estate business.</p>
+              <p style="margin-top: var(--spacing-md); color: var(--gray-400);">
+                See <code>COMPANYHUB_SETUP.md</code> for complete setup instructions.
+              </p>
+              <button class="btn btn-primary" style="margin-top: var(--spacing-lg);">Configure CompanyHub</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Marketing Page -->
+      <div id="marketing-page" class="page-content hidden">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Marketing Center</h3>
+          </div>
+          <div class="card-body">
+            <div class="empty-state">
+              <div class="empty-state-icon">📢</div>
+              <h4>Marketing Tools</h4>
+              <p>Manage your marketing campaigns, lead generation, and advertising.</p>
+              <button class="btn btn-primary" style="margin-top: var(--spacing-lg);">Coming Soon</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Reports Page -->
+      <div id="reports-page" class="page-content hidden">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Reports & Analytics</h3>
+          </div>
+          <div class="card-body">
+            <div class="empty-state">
+              <div class="empty-state-icon">📈</div>
+              <h4>Business Analytics</h4>
+              <p>View detailed reports on your deals, revenue, and performance metrics.</p>
+              <button class="btn btn-primary" style="margin-top: var(--spacing-lg);">Coming Soon</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Settings Page -->
+      <div id="settings-page" class="page-content hidden">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Settings</h3>
+          </div>
+          <div class="card-body">
+            <div class="empty-state">
+              <div class="empty-state-icon">⚙️</div>
+              <h4>Application Settings</h4>
+              <p>Configure your preferences, integrations, and account settings.</p>
+              <button class="btn btn-primary" style="margin-top: var(--spacing-lg);">Coming Soon</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- New Deal Modal -->
+  <div class="modal-overlay" id="new-deal-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Add New Deal</h3>
+        <button class="modal-close" onclick="UI.closeModal('new-deal-modal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="new-deal-form" onsubmit="event.preventDefault(); submitNewDeal();">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Property Address</label>
+              <input type="text" name="address" class="form-input" placeholder="123 Main Street" required>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">City</label>
+              <input type="text" name="city" class="form-input" placeholder="Austin" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">State</label>
+              <input type="text" name="state" class="form-input" placeholder="TX" maxlength="2" required>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Deal Type</label>
+              <select name="type" class="form-select" required>
+                <option value="wholesale">Wholesale</option>
+                <option value="sub2">Subject-To (Sub2)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Status</label>
+              <select name="status" class="form-select" required>
+                <option value="active">Active</option>
+                <option value="pending">Pending</option>
+                <option value="closed">Closed</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">ARV</label>
+              <div class="input-group">
+                <input type="number" name="arv" class="form-input" placeholder="250000" required>
+                <span class="input-group-addon">$</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Purchase Price</label>
+              <div class="input-group">
+                <input type="number" name="purchasePrice" class="form-input" placeholder="175000">
+                <span class="input-group-addon">$</span>
+              </div>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Assignment Fee (Wholesale)</label>
+              <div class="input-group">
+                <input type="number" name="assignmentFee" class="form-input" placeholder="15000">
+                <span class="input-group-addon">$</span>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="UI.closeModal('new-deal-modal')">Cancel</button>
+        <button class="btn btn-primary" onclick="submitNewDeal()">Add Deal</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- New Buyer Modal -->
+  <div class="modal-overlay" id="new-buyer-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Add New Buyer</h3>
+        <button class="modal-close" onclick="UI.closeModal('new-buyer-modal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="new-buyer-form" onsubmit="event.preventDefault(); submitNewBuyer();">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Full Name</label>
+              <input type="text" name="name" class="form-input" placeholder="John Smith" required>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Email</label>
+              <input type="email" name="email" class="form-input" placeholder="john@example.com" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Phone</label>
+              <input type="tel" name="phone" class="form-input" placeholder="512-555-0123" required>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Buyer Type</label>
+              <select name="type" class="form-select" required>
+                <option value="cash">Cash Buyer</option>
+                <option value="hard-money">Hard Money</option>
+                <option value="conventional">Conventional</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Max Budget</label>
+              <div class="input-group">
+                <input type="number" name="maxBudget" class="form-input" placeholder="350000" required>
+                <span class="input-group-addon">$</span>
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Target Areas (comma-separated)</label>
+            <input type="text" name="areas" class="form-input" placeholder="Austin, Round Rock, Cedar Park" required>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="UI.closeModal('new-buyer-modal')">Cancel</button>
+        <button class="btn btn-primary" onclick="submitNewBuyer()">Add Buyer</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+  <script>
+    // Tab switching function
+    function switchTab(tabName) {
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.textContent.toLowerCase().includes(tabName));
+      });
+      document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.toggle('active', content.id === `${tabName}-tab`);
+      });
+    }
+
+    // Form submission handlers
+    function submitNewDeal() {
+      const form = document.getElementById('new-deal-form');
+      const formData = new FormData(form);
+      const deal = {
+        address: formData.get('address'),
+        city: formData.get('city'),
+        state: formData.get('state').toUpperCase(),
+        type: formData.get('type'),
+        status: formData.get('status'),
+        arv: parseInt(formData.get('arv')),
+        purchasePrice: parseInt(formData.get('purchasePrice')) || 0,
+        assignmentFee: parseInt(formData.get('assignmentFee')) || 0
+      };
+      App.addDeal(deal);
+      form.reset();
+      UI.closeModal('new-deal-modal');
+    }
+
+    function submitNewBuyer() {
+      const form = document.getElementById('new-buyer-form');
+      const formData = new FormData(form);
+      const buyer = {
+        name: formData.get('name'),
+        email: formData.get('email'),
+        phone: formData.get('phone'),
+        type: formData.get('type'),
+        maxBudget: parseInt(formData.get('maxBudget')),
+        areas: formData.get('areas').split(',').map(a => a.trim())
+      };
+      App.addBuyer(buyer);
+      form.reset();
+      UI.closeModal('new-buyer-modal');
+    }
+  </script>
+</body>
+</html>
