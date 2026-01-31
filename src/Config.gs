@@ -210,9 +210,11 @@ const CONFIG = {
       'Repair Complexity Tier', 'Est Rehab Low', 'Est Rehab High', 'Repair Risk Score',
       // Exit Values
       'ARV', 'Zestimate', 'Comp Confidence Score',
+      // P6 FIX: Mortgage Data for Creative Finance (optional inputs)
+      'Existing Mortgage Balance', 'Existing Monthly Payment', 'Existing Interest Rate', 'Mortgage Data Source',
       // MAO Variants
       'MAO Flip', 'MAO STR', 'MAO MTR', 'MAO LTR', 'MAO Creative', 'MAO Final',
-      // Strategy Outputs
+      // Strategy Outputs - P7 FIX: Multi-Exit Summary persisted here
       'Best Strategy', 'Strategy Rationale', 'Multi-Exit Summary',
       // Offer Engine
       'Offer Type Recommended', 'Offer Price Target', 'Offer Terms Summary', 'Offer Risk Notes',
@@ -262,7 +264,8 @@ const CONFIG = {
     ],
 
     CREATIVE_ENGINE: [
-      'Deal ID', 'Address', 'Asking Price', 'ARV', 'Existing Mortgage Balance',
+      // P6 FIX: Mortgage data with ASSUMED/KNOWN flag
+      'Deal ID', 'Address', 'Asking Price', 'ARV', 'Mortgage Balance [Source]',
       'Existing Monthly Payment', 'Existing Interest Rate',
       // Sub2
       'Sub2 Viable', 'Sub2 Entry Cost', 'Sub2 Monthly Cash Flow', 'Sub2 Equity Position',

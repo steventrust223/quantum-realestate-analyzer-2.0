@@ -765,9 +765,25 @@ function analyzeLTRDeal(deal) {
 }
 
 /**
- * Estimates market rent based on property characteristics
+ * Gets market rent using MarketDataProvider
+ * P2 FIX: Uses API if configured, falls back to estimation
  */
 function estimateMarketRent(deal) {
+  // P2 FIX: Use MarketDataProvider for market rent
+  try {
+    const rentData = getMarketRent(deal);
+    return rentData.value;
+  } catch (e) {
+    // Fallback to internal estimation if MarketDataProvider fails
+    return estimateMarketRentFallback_(deal);
+  }
+}
+
+/**
+ * Fallback market rent estimation (internal)
+ * @private
+ */
+function estimateMarketRentFallback_(deal) {
   const beds = parseFloat(deal['Beds']) || 3;
   const baths = parseFloat(deal['Baths']) || 2;
   const sqft = parseFloat(deal['Sqft']) || 1500;
@@ -795,9 +811,25 @@ function estimateMarketRent(deal) {
 }
 
 /**
- * Estimates property taxes
+ * Gets property taxes using MarketDataProvider
+ * P2 FIX: Uses API if configured, falls back to estimation
  */
 function estimatePropertyTaxes(deal) {
+  // P2 FIX: Use MarketDataProvider for property taxes
+  try {
+    const taxData = getPropertyTaxes(deal);
+    return taxData.value;
+  } catch (e) {
+    // Fallback to internal estimation
+    return estimatePropertyTaxesFallback_(deal);
+  }
+}
+
+/**
+ * Fallback property tax estimation (internal)
+ * @private
+ */
+function estimatePropertyTaxesFallback_(deal) {
   const price = parseFloat(deal['Asking Price']) || 0;
   const state = deal['State'] || '';
 
@@ -960,22 +992,30 @@ function runCreativeEngine() {
 
 /**
  * Analyzes a single deal for creative finance options
+ * P6 FIX: Handles missing mortgage data with safe assumptions and flags
  */
 function analyzeCreativeDeal(deal) {
   const askingPrice = parseFloat(deal['Asking Price']) || 0;
   const arv = parseFloat(deal['ARV']) || askingPrice * 1.2;
 
-  // Estimate existing mortgage (simplified)
-  const estimatedMortgage = askingPrice * 0.6;
-  const estimatedPayment = calculateMortgagePayment(estimatedMortgage, 0.045, 25);
-  const existingRate = 0.045;
+  // P6 FIX: Check for actual mortgage data, use assumptions if missing
+  const mortgageData = getMortgageDataWithAssumptions_(deal, askingPrice);
 
-  // Analyze each creative strategy
-  const sub2 = analyzeSub2(deal, askingPrice, estimatedMortgage, estimatedPayment);
-  const wrap = analyzeWrap(deal, askingPrice, estimatedMortgage, estimatedPayment, existingRate);
+  // Analyze each creative strategy with mortgage data
+  const sub2 = analyzeSub2(deal, askingPrice, mortgageData.balance, mortgageData.payment);
+  const wrap = analyzeWrap(deal, askingPrice, mortgageData.balance, mortgageData.payment, mortgageData.rate);
   const sellerCarry = analyzeSellerCarry(deal, askingPrice);
   const leaseOption = analyzeLeaseOption(deal, askingPrice, arv);
   const hybrid = analyzeHybrid(deal, sub2, wrap, sellerCarry, leaseOption);
+
+  // P6 FIX: Apply penalty to viability scores if data was assumed
+  if (mortgageData.isAssumed) {
+    const assumptionPenalty = 15; // 15-point penalty for assumed data
+    sub2.score = Math.max(0, sub2.score - assumptionPenalty);
+    wrap.score = Math.max(0, wrap.score - assumptionPenalty);
+    sub2.notes = `[ASSUMED DATA] ${sub2.notes}`;
+    wrap.notes = `[ASSUMED DATA] ${wrap.notes}`;
+  }
 
   // Determine best creative strategy
   const strategies = [
@@ -992,16 +1032,21 @@ function analyzeCreativeDeal(deal) {
     : { name: 'None', score: 0 };
 
   const creativeScore = bestStrategy.score;
-  const creativeVerdict = getCreativeVerdict(viableStrategies.length, creativeScore);
+  // P6 FIX: Apply additional penalty if mortgage data was assumed
+  const finalCreativeScore = mortgageData.isAssumed ? Math.max(0, creativeScore - 10) : creativeScore;
+  const creativeVerdict = getCreativeVerdict(viableStrategies.length, finalCreativeScore);
+
+  // P6 FIX: Flag whether mortgage data is ASSUMED or KNOWN
+  const mortgageDataFlag = mortgageData.isAssumed ? '[ASSUMED]' : '[KNOWN]';
 
   return [
     deal['Deal ID'] || '',
     deal['Address'] || '',
     askingPrice,
     arv,
-    estimatedMortgage.toFixed(0),
-    estimatedPayment.toFixed(0),
-    (existingRate * 100).toFixed(2) + '%',
+    mortgageData.balance.toFixed(0) + ' ' + mortgageDataFlag,
+    mortgageData.payment.toFixed(0),
+    (mortgageData.rate * 100).toFixed(2) + '%',
     // Sub2
     sub2.viable ? 'Yes' : 'No',
     sub2.entryCost.toFixed(0),
@@ -1248,6 +1293,63 @@ function getCreativeVerdict(viableCount, score) {
   if (score >= 50) return 'VIABLE';
   if (score >= 30) return 'LIMITED';
   return 'MARGINAL';
+}
+
+/**
+ * P6 FIX: Gets mortgage data with safe assumptions when not available
+ * Checks for actual data first, uses estimation if missing
+ * @private
+ * @param {Object} deal - Deal object
+ * @param {number} askingPrice - Asking price
+ * @returns {Object} Mortgage data with isAssumed flag
+ */
+function getMortgageDataWithAssumptions_(deal, askingPrice) {
+  // P6 FIX: Check for actual mortgage data columns
+  const mortgageBalance = parseFloat(deal['Existing Mortgage Balance'] || deal['Mortgage Balance'] || 0);
+  const mortgagePayment = parseFloat(deal['Existing Monthly Payment'] || deal['Mortgage Payment'] || 0);
+  const mortgageRate = parseFloat(deal['Existing Interest Rate'] || deal['Mortgage Rate'] || 0);
+
+  // Check if we have actual data
+  const hasBalance = mortgageBalance > 0;
+  const hasPayment = mortgagePayment > 0;
+  const hasRate = mortgageRate > 0;
+
+  // If all data is present, use it
+  if (hasBalance && hasPayment && hasRate) {
+    return {
+      balance: mortgageBalance,
+      payment: mortgagePayment,
+      rate: mortgageRate / 100, // Normalize rate
+      isAssumed: false,
+      source: 'KNOWN'
+    };
+  }
+
+  // P6 FIX: Use safe assumptions based on typical market conditions
+  // Assume 60% LTV, 4.5% rate (conservative for older loans), 25-year amortization
+  const assumedLTV = 0.60;
+  const assumedRate = 0.045;
+  const assumedTermYears = 25;
+
+  const assumedBalance = hasBalance ? mortgageBalance : askingPrice * assumedLTV;
+  const assumedPayment = hasPayment ? mortgagePayment :
+    calculateMortgagePayment(assumedBalance, assumedRate, assumedTermYears);
+  const finalRate = hasRate ? (mortgageRate / 100) : assumedRate;
+
+  return {
+    balance: assumedBalance,
+    payment: assumedPayment,
+    rate: finalRate,
+    isAssumed: !hasBalance || !hasPayment || !hasRate,
+    source: (hasBalance || hasPayment || hasRate) ? 'PARTIAL' : 'ASSUMED',
+    assumptionDetails: {
+      balanceAssumed: !hasBalance,
+      paymentAssumed: !hasPayment,
+      rateAssumed: !hasRate,
+      assumedLTV: assumedLTV,
+      assumedRate: assumedRate
+    }
+  };
 }
 
 /**

@@ -497,7 +497,8 @@ function updateLeadScoringSheet() {
     const equityScore = computeProfitScore(deal);
     const marketScore = computeMarketConditionScore(deal);
     const conditionScore = computePropertyQualityScore(deal);
-    const sellerResponseScore = 50; // Placeholder - would track actual responses
+    // P3 FIX: Dynamic seller response score from messaging logs
+    const sellerResponseScore = computeSellerResponseScore(deal);
     const stlScore = computeSTLScore(deal);
     const somImpact = computeSOMImpact(deal);
     const totalScore = computeDealScore(deal);
@@ -616,4 +617,151 @@ function getDealsByVerdict(verdictLabel) {
   }
 
   return deals;
+}
+
+// ============================================================
+// P3 FIX: SELLER RESPONSE SCORE COMPUTATION
+// ============================================================
+
+/**
+ * Computes seller response score from messaging history
+ * P3 FIX: Replaces hardcoded placeholder with dynamic calculation
+ * @param {Object} deal - Deal object
+ * @returns {number} Seller response score (0-100)
+ */
+function computeSellerResponseScore(deal) {
+  let score = 50; // Base score
+
+  // Check if deal has messaging data
+  const followUpTag = deal['Follow-Up Tag'] || '';
+  const lastContactedAt = deal['Last Contacted At'];
+  const statusStage = deal['Status Stage'] || '';
+  const sellerMessage = deal['Seller Message'] || '';
+
+  // Factor 1: Has been contacted (shows engagement attempt)
+  if (lastContactedAt) {
+    score += 10;
+  }
+
+  // Factor 2: Follow-up sequence indicates engagement level
+  if (followUpTag) {
+    if (followUpTag.includes('URGENT')) {
+      score += 15; // High priority = high potential
+    } else if (followUpTag.includes('ACTIVE')) {
+      score += 10;
+    } else if (followUpTag.includes('NURTURE')) {
+      score += 5;
+    }
+  }
+
+  // Factor 3: Status stage indicates response
+  const responsiveStages = ['Contacted', 'Appointment Set', 'Offer Sent', 'Under Contract'];
+  const nonResponsiveStages = ['No Response', 'Not Interested', 'Do Not Contact'];
+
+  if (responsiveStages.some(s => statusStage.includes(s))) {
+    score += 20;
+  } else if (nonResponsiveStages.some(s => statusStage.includes(s))) {
+    score -= 25;
+  }
+
+  // Factor 4: Message has been generated (ready for outreach)
+  if (sellerMessage && sellerMessage.length > 50) {
+    score += 5;
+  }
+
+  // Factor 5: Check sync log for actual response history
+  const responseHistory = getSellerResponseHistory_(deal['Deal ID']);
+  if (responseHistory.hasResponded) {
+    score += 25;
+    if (responseHistory.responseTime < 24) { // Hours
+      score += 10; // Quick responder bonus
+    }
+  }
+  if (responseHistory.totalOutreach > 0 && !responseHistory.hasResponded) {
+    // Penalize if multiple outreach with no response
+    score -= Math.min(15, responseHistory.totalOutreach * 3);
+  }
+
+  return Math.min(100, Math.max(0, Math.round(score)));
+}
+
+/**
+ * Gets seller response history from sync/system logs
+ * @private
+ * @param {string} dealId - Deal ID
+ * @returns {Object} Response history data
+ */
+function getSellerResponseHistory_(dealId) {
+  const result = {
+    hasResponded: false,
+    responseTime: null,
+    totalOutreach: 0,
+    lastOutreachDate: null
+  };
+
+  if (!dealId) return result;
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const syncLog = ss.getSheetByName(CONFIG.SHEETS.SYNC_LOG);
+
+  if (!syncLog || syncLog.getLastRow() <= 1) {
+    return result;
+  }
+
+  const data = syncLog.getDataRange().getValues();
+  const headers = data[0];
+  const recordIdCol = headers.indexOf('Record ID');
+  const actionCol = headers.indexOf('Action');
+  const statusCol = headers.indexOf('Status');
+  const timestampCol = headers.indexOf('Timestamp');
+  const detailsCol = headers.indexOf('Details');
+
+  let firstOutreach = null;
+  let firstResponse = null;
+
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const recordId = String(row[recordIdCol] || '');
+    const action = String(row[actionCol] || '').toUpperCase();
+    const status = String(row[statusCol] || '').toUpperCase();
+    const details = String(row[detailsCol] || '').toLowerCase();
+
+    // Check if this log entry relates to our deal
+    if (!recordId.includes(dealId)) continue;
+
+    // Count outreach attempts
+    if (action.includes('MESSAGE') || action.includes('SMS') ||
+      action.includes('CALL') || action.includes('EMAIL')) {
+      result.totalOutreach++;
+
+      const timestamp = row[timestampCol];
+      if (timestamp) {
+        if (!firstOutreach || new Date(timestamp) < new Date(firstOutreach)) {
+          firstOutreach = timestamp;
+        }
+        result.lastOutreachDate = timestamp;
+      }
+    }
+
+    // Check for responses
+    if (details.includes('responded') || details.includes('replied') ||
+      details.includes('callback') || details.includes('interested') ||
+      status.includes('RESPONDED')) {
+      result.hasResponded = true;
+
+      const timestamp = row[timestampCol];
+      if (timestamp && !firstResponse) {
+        firstResponse = timestamp;
+      }
+    }
+  }
+
+  // Calculate response time in hours
+  if (firstOutreach && firstResponse) {
+    const outreachDate = new Date(firstOutreach);
+    const responseDate = new Date(firstResponse);
+    result.responseTime = (responseDate - outreachDate) / (1000 * 60 * 60);
+  }
+
+  return result;
 }

@@ -399,15 +399,31 @@ function updateAllMarketData() {
 
 /**
  * Calculates absorption rate for a market
+ * P2 FIX: Uses MarketDataProvider if API configured, falls back to estimates
  * Absorption = Sales / Inventory
  * @param {string} zip - ZIP code
  * @param {string} state - State code
  * @returns {Object} Absorption data
  */
 function calculateAbsorptionRate(zip, state) {
-  // In production, this would query MLS/market data
-  // Using proxy estimates based on state
+  // P2 FIX: Try MarketDataProvider first
+  try {
+    const marketSummary = getMarketDataSummary(zip, state);
+    if (marketSummary && marketSummary.source === 'API') {
+      const inventoryMonths = marketSummary.inventoryMonths || 4;
+      logEvent('MARKET_DATA', `Absorption API: ${inventoryMonths} months for ZIP ${zip}`);
+      return {
+        rate: inventoryMonths,
+        trend: inventoryMonths < 3 ? 'increasing' : (inventoryMonths > 5 ? 'decreasing' : 'stable'),
+        inventory: inventoryMonths < 2 ? 'very low' : (inventoryMonths < 4 ? 'low' : (inventoryMonths < 6 ? 'moderate' : 'high')),
+        source: 'API'
+      };
+    }
+  } catch (e) {
+    // Fall through to estimates
+  }
 
+  // Fallback: Using proxy estimates based on state
   const absorptionRates = {
     'TX': { rate: 3.5, trend: 'increasing', inventory: 'low' },
     'FL': { rate: 3.0, trend: 'stable', inventory: 'moderate' },
@@ -420,10 +436,13 @@ function calculateAbsorptionRate(zip, state) {
     'TN': { rate: 2.3, trend: 'increasing', inventory: 'very low' }
   };
 
+  logEvent('MARKET_DATA', `Absorption ESTIMATE for state ${state}`);
+
   return absorptionRates[state] || {
     rate: 4.0,
     trend: 'stable',
-    inventory: 'moderate'
+    inventory: 'moderate',
+    source: 'ESTIMATE'
   };
 }
 

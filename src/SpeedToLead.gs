@@ -140,6 +140,7 @@ function checkSpeedToLeadSLA() {
 
 /**
  * Processes speed-to-lead escalations
+ * P4 FIX: Complete escalation processing with all steps
  * @param {Array} escalations - List of escalation objects
  */
 function processSTLEscalations(escalations) {
@@ -155,22 +156,31 @@ function processSTLEscalations(escalations) {
     return b.minutesWaiting - a.minutesWaiting;
   });
 
-  // Queue for CRM sync if enabled
-  const crmEnabled = getSetting('auto_crm_sync', 'false') === 'true';
-  if (crmEnabled) {
-    escalations.forEach(esc => {
+  // P4 FIX: Execute full escalation for each overdue lead
+  const escalationResults = [];
+  escalations.forEach(esc => {
+    // Only execute full escalation for BREACH status
+    if (esc.slaStatus === 'BREACH') {
+      const result = executeEscalation(esc);
+      escalationResults.push(result);
+    } else {
+      // For SLOW status, just queue for attention
       queueCRMEscalation(esc);
-    });
-  }
+    }
+  });
 
   // Log high-priority escalations
   const highPriority = escalations.filter(e => e.verdict === 'HOT' || e.verdict === 'SOLID');
   if (highPriority.length > 0) {
     logEvent('STL', `HIGH PRIORITY: ${highPriority.length} hot/solid leads awaiting contact`);
 
-    // Could send notification here
-    // sendSTLNotification(highPriority);
+    // P4 FIX: Send notification for high-priority leads
+    sendSTLNotification(highPriority);
   }
+
+  // Log summary
+  const successCount = escalationResults.filter(r => r.success).length;
+  logEvent('STL', `Escalation processing complete: ${successCount}/${escalationResults.length} successful`);
 }
 
 /**
@@ -412,36 +422,143 @@ function updateSLAConfig(config) {
 // ============================================================
 
 /**
+ * P4 FIX: Complete escalation logic for overdue leads
+ * Marks lead as overdue, assigns fallback owner, sends notification, creates CRM task
+ * @param {Object} escalation - Escalation data object
+ * @returns {Object} Result of escalation actions
+ */
+function executeEscalation(escalation) {
+  const result = {
+    dealId: escalation.dealId,
+    actions: [],
+    success: true
+  };
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const masterSheet = ss.getSheetByName(CONFIG.SHEETS.MASTER_DB);
+
+  if (!masterSheet) {
+    result.success = false;
+    result.error = 'Master sheet not found';
+    return result;
+  }
+
+  // Find the deal row
+  const headers = masterSheet.getRange(1, 1, 1, masterSheet.getLastColumn()).getValues()[0];
+  const colMap = {};
+  headers.forEach((h, i) => colMap[h] = i + 1);
+
+  const data = masterSheet.getDataRange().getValues();
+  let rowIndex = -1;
+
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][colMap['Deal ID'] - 1] === escalation.dealId) {
+      rowIndex = i + 1;
+      break;
+    }
+  }
+
+  if (rowIndex === -1) {
+    result.success = false;
+    result.error = 'Deal not found';
+    return result;
+  }
+
+  // P4 FIX Step 1: Mark lead as overdue
+  if (colMap['SLA Status']) {
+    masterSheet.getRange(rowIndex, colMap['SLA Status']).setValue('OVERDUE');
+    masterSheet.getRange(rowIndex, colMap['SLA Status']).setBackground('#FFCDD2').setFontWeight('bold');
+    result.actions.push('Marked as OVERDUE');
+    logEvent('STL', `Deal ${escalation.dealId} marked as OVERDUE`);
+  }
+
+  // P4 FIX Step 2: Assign fallback owner
+  const fallbackOwner = getSetting('stl_fallback_owner', '');
+  const currentOwner = data[rowIndex - 1][colMap['Assigned To'] - 1] || '';
+
+  if (fallbackOwner && !currentOwner && colMap['Assigned To']) {
+    masterSheet.getRange(rowIndex, colMap['Assigned To']).setValue(fallbackOwner);
+    result.actions.push(`Assigned to fallback owner: ${fallbackOwner}`);
+    logEvent('STL', `Deal ${escalation.dealId} assigned to fallback owner: ${fallbackOwner}`);
+  } else if (!currentOwner && colMap['Assigned To']) {
+    // No fallback configured, assign to default
+    masterSheet.getRange(rowIndex, colMap['Assigned To']).setValue('UNASSIGNED - NEEDS ATTENTION');
+    result.actions.push('Marked as UNASSIGNED');
+  }
+
+  // P4 FIX Step 3: Send internal email notification
+  const notificationResult = sendSTLNotification([escalation]);
+  if (notificationResult && notificationResult.sent) {
+    result.actions.push(`Email notification sent to ${notificationResult.recipient}`);
+  }
+
+  // P4 FIX Step 4: Create CRM task if enabled
+  const crmTaskEnabled = getSetting('stl_create_crm_task', 'false') === 'true';
+  if (crmTaskEnabled) {
+    try {
+      const taskResult = createCRMEscalationTask(escalation);
+      if (taskResult.created) {
+        result.actions.push(`CRM task created in ${taskResult.service}: ${taskResult.taskId}`);
+        logEvent('STL', `CRM task created for ${escalation.dealId}`);
+      }
+    } catch (error) {
+      logEvent('STL', `Failed to create CRM task: ${error.message}`);
+    }
+  }
+
+  // P4 FIX Step 5: Log the escalation
+  logSync('STL', 'ESCALATION', escalation.dealId, 'EXECUTED', result.actions.join('; '));
+
+  return result;
+}
+
+/**
  * Sends STL notification for urgent leads
+ * P4 FIX: Complete implementation with actual email sending
  * @param {Array} urgentLeads - List of urgent leads
+ * @returns {Object} Notification result
  */
 function sendSTLNotification(urgentLeads) {
-  // This would integrate with email/SMS notification system
-  // Placeholder for now
-
   const emailEnabled = getSetting('notification_email_enabled', 'false') === 'true';
-  if (!emailEnabled) return;
+  if (!emailEnabled) {
+    return { sent: false, reason: 'Email notifications disabled' };
+  }
 
   const recipientEmail = getSetting('notification_email', '');
-  if (!recipientEmail) return;
+  if (!recipientEmail) {
+    return { sent: false, reason: 'No recipient email configured' };
+  }
 
   let subject = `[Quantum] ${urgentLeads.length} Hot Leads Need Attention`;
   let body = 'The following high-priority leads need immediate contact:\n\n';
 
   urgentLeads.forEach(lead => {
     body += `- ${lead.address}\n`;
+    body += `  Deal ID: ${lead.dealId}\n`;
     body += `  Verdict: ${lead.verdict}\n`;
     body += `  Waiting: ${lead.minutesWaiting} minutes\n`;
     body += `  Status: ${lead.slaStatus}\n\n`;
   });
 
+  body += '\n---\n';
+  body += 'Actions Required:\n';
+  body += '1. Contact these leads immediately\n';
+  body += '2. Update status in Master Database\n';
+  body += '3. Record contact in system\n';
   body += '\nLogin to your Quantum dashboard to take action.';
+  body += '\n\nThis is an automated message from Quantum Real Estate Analyzer.';
 
   try {
-    MailApp.sendEmail(recipientEmail, subject, body);
-    logEvent('STL', `Notification sent to ${recipientEmail}`);
+    MailApp.sendEmail({
+      to: recipientEmail,
+      subject: subject,
+      body: body
+    });
+    logEvent('STL', `Escalation notification sent to ${recipientEmail} for ${urgentLeads.length} leads`);
+    return { sent: true, recipient: recipientEmail };
   } catch (error) {
     logError('STL', 'Failed to send notification: ' + error.message, error.stack);
+    return { sent: false, reason: error.message };
   }
 }
 
