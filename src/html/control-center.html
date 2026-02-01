@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: #333;
+    }
+    .container { max-width: 1200px; margin: 0 auto; }
+    .header {
+      background: white;
+      padding: 25px 30px;
+      border-radius: 15px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      margin-bottom: 25px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .header h1 { color: #667eea; font-size: 1.8em; }
+    .header-badge {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 8px 20px;
+      border-radius: 20px;
+      font-weight: 600;
+    }
+    .metrics-row {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 20px;
+      margin-bottom: 25px;
+    }
+    .metric-card {
+      background: white;
+      padding: 25px;
+      border-radius: 12px;
+      text-align: center;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      transition: transform 0.3s;
+    }
+    .metric-card:hover { transform: translateY(-5px); }
+    .metric-value {
+      font-size: 2.5em;
+      font-weight: bold;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .metric-label { color: #666; margin-top: 8px; }
+    .main-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 25px;
+    }
+    .panel {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      overflow: hidden;
+    }
+    .panel-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 15px 20px;
+      font-weight: 600;
+      font-size: 1.1em;
+    }
+    .panel-content { padding: 20px; }
+    .action-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+    .action-btn {
+      background: #f5f5f5;
+      border: 2px solid #e0e0e0;
+      padding: 15px;
+      border-radius: 10px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-weight: 500;
+    }
+    .action-btn:hover {
+      border-color: #667eea;
+      background: #f0f4ff;
+    }
+    .action-btn.primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+    }
+    .action-btn.primary:hover { transform: scale(1.02); }
+    .status-list { list-style: none; }
+    .status-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid #eee;
+    }
+    .status-item:last-child { border-bottom: none; }
+    .status-label { color: #666; }
+    .status-value { font-weight: 600; }
+    .status-indicator {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-right: 8px;
+    }
+    .status-green { background: #4CAF50; }
+    .status-yellow { background: #FF9800; }
+    .status-red { background: #f44336; }
+    .log-list {
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .log-item {
+      padding: 10px;
+      border-bottom: 1px solid #eee;
+      font-size: 0.9em;
+    }
+    .log-item:hover { background: #f8f9fa; }
+    .log-time { color: #999; font-size: 0.85em; }
+    .log-category {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 0.75em;
+      font-weight: 600;
+      margin: 0 5px;
+    }
+    .cat-pipeline { background: #e3f2fd; color: #1976D2; }
+    .cat-error { background: #ffebee; color: #c62828; }
+    .cat-stl { background: #e8f5e9; color: #2e7d32; }
+    .cat-crm { background: #f3e5f5; color: #7b1fa2; }
+    .toggle-switch {
+      position: relative;
+      width: 50px;
+      height: 26px;
+    }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: #ccc;
+      border-radius: 26px;
+      transition: 0.3s;
+    }
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 20px;
+      width: 20px;
+      left: 3px;
+      bottom: 3px;
+      background: white;
+      border-radius: 50%;
+      transition: 0.3s;
+    }
+    input:checked + .toggle-slider { background: #4CAF50; }
+    input:checked + .toggle-slider:before { transform: translateX(24px); }
+    .health-badge {
+      display: inline-block;
+      padding: 8px 20px;
+      border-radius: 20px;
+      font-weight: 600;
+    }
+    .health-good { background: #c8e6c9; color: #2e7d32; }
+    .health-warning { background: #fff3e0; color: #ef6c00; }
+    .health-error { background: #ffcdd2; color: #c62828; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div>
+        <h1>Quantum Control Center</h1>
+        <p style="color: #666; margin-top: 5px;">Real Estate Analyzer v2.0</p>
+      </div>
+      <div>
+        <span class="health-badge health-good" id="health-status">HEALTHY</span>
+      </div>
+    </div>
+
+    <div class="metrics-row">
+      <div class="metric-card">
+        <div class="metric-value" id="total-leads">--</div>
+        <div class="metric-label">Total Leads</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value" id="hot-deals">--</div>
+        <div class="metric-label">HOT Deals</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value" id="stl-breach">--</div>
+        <div class="metric-label">SLA Breaches</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value" id="crm-pending">--</div>
+        <div class="metric-label">CRM Pending</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value" id="active-buyers">--</div>
+        <div class="metric-label">Active Buyers</div>
+      </div>
+    </div>
+
+    <div class="main-grid">
+      <div>
+        <!-- Quick Actions Panel -->
+        <div class="panel" style="margin-bottom: 25px;">
+          <div class="panel-header">Quick Actions</div>
+          <div class="panel-content">
+            <div class="action-grid">
+              <div class="action-btn primary" onclick="runAction('pipeline')">
+                Run Full Pipeline
+              </div>
+              <div class="action-btn primary" onclick="runAction('refresh')">
+                Refresh Dashboard
+              </div>
+              <div class="action-btn" onclick="runAction('ingest')">
+                Ingest & Clean
+              </div>
+              <div class="action-btn" onclick="runAction('analyze')">
+                Analyze & Score
+              </div>
+              <div class="action-btn" onclick="runAction('verdict')">
+                Generate Verdicts
+              </div>
+              <div class="action-btn" onclick="runAction('offers')">
+                Generate Offers
+              </div>
+              <div class="action-btn" onclick="runAction('buyers')">
+                Match Buyers
+              </div>
+              <div class="action-btn" onclick="runAction('crm')">
+                Sync to CRM
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Activity Panel -->
+        <div class="panel">
+          <div class="panel-header">Recent Activity</div>
+          <div class="panel-content">
+            <div class="log-list" id="activity-log">
+              <p style="color: #666;">Loading activity...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <!-- System Status Panel -->
+        <div class="panel" style="margin-bottom: 25px;">
+          <div class="panel-header">System Status</div>
+          <div class="panel-content">
+            <ul class="status-list">
+              <li class="status-item">
+                <span class="status-label">
+                  <span class="status-indicator status-green" id="status-sheets"></span>
+                  Required Sheets
+                </span>
+                <span class="status-value" id="sheets-status">OK</span>
+              </li>
+              <li class="status-item">
+                <span class="status-label">
+                  <span class="status-indicator status-green" id="status-triggers"></span>
+                  Automation Triggers
+                </span>
+                <span class="status-value" id="triggers-status">Active</span>
+              </li>
+              <li class="status-item">
+                <span class="status-label">
+                  <span class="status-indicator status-yellow" id="status-crm"></span>
+                  CRM Connection
+                </span>
+                <span class="status-value" id="crm-status">Not Configured</span>
+              </li>
+              <li class="status-item">
+                <span class="status-label">Last Pipeline Run</span>
+                <span class="status-value" id="last-pipeline">--</span>
+              </li>
+              <li class="status-item">
+                <span class="status-label">Unresolved Errors</span>
+                <span class="status-value" id="error-count">0</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Automation Panel -->
+        <div class="panel" style="margin-bottom: 25px;">
+          <div class="panel-header">Automation Settings</div>
+          <div class="panel-content">
+            <ul class="status-list">
+              <li class="status-item">
+                <span class="status-label">Nightly Refresh</span>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="auto-nightly" checked onchange="toggleAuto('nightly')">
+                  <span class="toggle-slider"></span>
+                </label>
+              </li>
+              <li class="status-item">
+                <span class="status-label">Dashboard Update</span>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="auto-dashboard" checked onchange="toggleAuto('dashboard')">
+                  <span class="toggle-slider"></span>
+                </label>
+              </li>
+              <li class="status-item">
+                <span class="status-label">STL Monitoring</span>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="auto-stl" checked onchange="toggleAuto('stl')">
+                  <span class="toggle-slider"></span>
+                </label>
+              </li>
+              <li class="status-item">
+                <span class="status-label">Auto CRM Sync</span>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="auto-crm" onchange="toggleAuto('crm')">
+                  <span class="toggle-slider"></span>
+                </label>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Open UIs Panel -->
+        <div class="panel">
+          <div class="panel-header">Open Interface</div>
+          <div class="panel-content">
+            <div class="action-btn" style="margin-bottom: 10px;" onclick="openUI('deal-analyzer')">
+              Deal Analyzer
+            </div>
+            <div class="action-btn" style="margin-bottom: 10px;" onclick="openUI('offer-generator')">
+              Offer Generator
+            </div>
+            <div class="action-btn" style="margin-bottom: 10px;" onclick="openUI('buyer-matcher')">
+              Buyer Matcher
+            </div>
+            <div class="action-btn" onclick="openUI('help-sop')">
+              Help & SOPs
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function loadDashboardData() {
+      google.script.run
+        .withSuccessHandler(function(data) {
+          // Update metrics
+          document.getElementById('total-leads').textContent = data.metrics.totalLeads || 0;
+          document.getElementById('hot-deals').textContent = data.metrics.hotDeals || 0;
+          document.getElementById('stl-breach').textContent = data.metrics.stlBreach || 0;
+          document.getElementById('crm-pending').textContent = data.metrics.crmPending || 0;
+          document.getElementById('active-buyers').textContent = data.metrics.activeBuyers || 0;
+          document.getElementById('last-pipeline').textContent = data.metrics.lastPipelineRun || 'Never';
+
+          // Update health status
+          const healthBadge = document.getElementById('health-status');
+          healthBadge.className = 'health-badge';
+          if (data.metrics.systemHealth === 'HEALTHY') {
+            healthBadge.classList.add('health-good');
+            healthBadge.textContent = 'HEALTHY';
+          } else if (data.metrics.systemHealth === 'ISSUES') {
+            healthBadge.classList.add('health-error');
+            healthBadge.textContent = 'ISSUES';
+          } else {
+            healthBadge.classList.add('health-warning');
+            healthBadge.textContent = 'WARNING';
+          }
+
+          // Update CRM status
+          if (data.crmStatus) {
+            const crmConfigured = data.crmStatus.smsit.enabled || data.crmStatus.companyhub.enabled;
+            document.getElementById('crm-status').textContent = crmConfigured ? 'Connected' : 'Not Configured';
+            document.getElementById('status-crm').className = 'status-indicator ' + (crmConfigured ? 'status-green' : 'status-yellow');
+          }
+
+          // Update error count
+          document.getElementById('error-count').textContent = data.recentErrors ? data.recentErrors.length : 0;
+
+          // Update activity log
+          const logContainer = document.getElementById('activity-log');
+          if (data.recentLogs && data.recentLogs.length > 0) {
+            logContainer.innerHTML = data.recentLogs.slice(0, 15).map(log => `
+              <div class="log-item">
+                <span class="log-time">${formatTime(log.timestamp)}</span>
+                <span class="log-category cat-${log.category.toLowerCase()}">${log.category}</span>
+                ${log.message}
+              </div>
+            `).join('');
+          } else {
+            logContainer.innerHTML = '<p style="color: #666;">No recent activity</p>';
+          }
+        })
+        .withFailureHandler(function(error) {
+          console.error('Failed to load dashboard:', error);
+        })
+        .getControlCenterData();
+    }
+
+    function formatTime(timestamp) {
+      if (!timestamp) return '';
+      const date = new Date(timestamp);
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function runAction(action) {
+      const actionMap = {
+        'pipeline': 'runFullPipeline',
+        'refresh': 'refreshDashboard',
+        'ingest': 'runIngestAndClean',
+        'analyze': 'runAnalyzeAndScore',
+        'verdict': 'generateVerdictRankings',
+        'offers': 'generateOfferPack',
+        'buyers': 'runBuyerMatching',
+        'crm': 'syncToCRMIfEnabled'
+      };
+
+      const funcName = actionMap[action];
+      if (!funcName) return;
+
+      // Show loading state
+      event.target.style.opacity = '0.5';
+      event.target.textContent = 'Running...';
+
+      google.script.run
+        .withSuccessHandler(function() {
+          event.target.style.opacity = '1';
+          event.target.textContent = getActionLabel(action);
+          loadDashboardData();
+        })
+        .withFailureHandler(function(error) {
+          event.target.style.opacity = '1';
+          event.target.textContent = getActionLabel(action);
+          alert('Error: ' + error.message);
+        })
+        [funcName]();
+    }
+
+    function getActionLabel(action) {
+      const labels = {
+        'pipeline': 'Run Full Pipeline',
+        'refresh': 'Refresh Dashboard',
+        'ingest': 'Ingest & Clean',
+        'analyze': 'Analyze & Score',
+        'verdict': 'Generate Verdicts',
+        'offers': 'Generate Offers',
+        'buyers': 'Match Buyers',
+        'crm': 'Sync to CRM'
+      };
+      return labels[action] || action;
+    }
+
+    function toggleAuto(setting) {
+      const settingMap = {
+        'nightly': 'auto_nightly_refresh',
+        'dashboard': 'auto_dashboard_update',
+        'stl': 'auto_stl_check',
+        'crm': 'auto_crm_sync'
+      };
+
+      const checkbox = document.getElementById('auto-' + setting);
+      google.script.run.toggleAutomation(settingMap[setting], checkbox.checked);
+    }
+
+    function openUI(uiName) {
+      const uiMap = {
+        'deal-analyzer': 'openDealAnalyzer',
+        'offer-generator': 'openOfferGenerator',
+        'buyer-matcher': 'openBuyerMatcher',
+        'help-sop': 'openHelpSOP'
+      };
+
+      google.script.run[uiMap[uiName]]();
+    }
+
+    // Initialize
+    loadDashboardData();
+
+    // Refresh every 30 seconds
+    setInterval(loadDashboardData, 30000);
+  </script>
+</body>
+</html>

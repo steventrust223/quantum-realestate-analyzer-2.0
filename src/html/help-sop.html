@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f5f7fa;
+      padding: 20px;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 25px 30px;
+      border-radius: 12px 12px 0 0;
+    }
+    .header h1 { font-size: 1.5em; }
+    .header p { opacity: 0.9; margin-top: 5px; }
+    .main-content {
+      background: white;
+      border-radius: 0 0 12px 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+    .sidebar {
+      width: 250px;
+      background: #f8f9fa;
+      padding: 20px;
+      float: left;
+      min-height: 600px;
+      border-right: 1px solid #e0e0e0;
+    }
+    .content-area {
+      margin-left: 250px;
+      padding: 30px;
+      min-height: 600px;
+    }
+    .nav-section { margin-bottom: 20px; }
+    .nav-section h4 {
+      color: #667eea;
+      margin-bottom: 10px;
+      font-size: 0.9em;
+      text-transform: uppercase;
+    }
+    .nav-link {
+      display: block;
+      padding: 8px 12px;
+      color: #333;
+      text-decoration: none;
+      border-radius: 6px;
+      margin-bottom: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .nav-link:hover { background: #e0e0e0; }
+    .nav-link.active { background: #667eea; color: white; }
+    .help-section { display: none; }
+    .help-section.active { display: block; }
+    .help-section h2 {
+      color: #333;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #667eea;
+    }
+    .help-section h3 { color: #667eea; margin: 20px 0 10px; }
+    .help-section p { line-height: 1.7; color: #555; margin-bottom: 15px; }
+    .help-section ul, .help-section ol {
+      margin-left: 25px;
+      margin-bottom: 15px;
+      line-height: 1.8;
+    }
+    .help-section li { margin-bottom: 8px; }
+    .code-block {
+      background: #f5f5f5;
+      padding: 15px;
+      border-radius: 6px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.9em;
+      margin: 15px 0;
+      overflow-x: auto;
+    }
+    .tip-box {
+      background: #e3f2fd;
+      border-left: 4px solid #2196F3;
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 4px;
+    }
+    .tip-box strong { color: #1976D2; }
+    .warning-box {
+      background: #fff3e0;
+      border-left: 4px solid #FF9800;
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 4px;
+    }
+    .workflow-step {
+      display: flex;
+      margin: 15px 0;
+      align-items: flex-start;
+    }
+    .step-number {
+      background: #667eea;
+      color: white;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      margin-right: 15px;
+      flex-shrink: 0;
+    }
+    .step-content { flex: 1; }
+    .step-content strong { color: #333; }
+    .clearfix::after { content: ""; display: table; clear: both; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Help & SOPs</h1>
+      <p>Documentation and Standard Operating Procedures</p>
+    </div>
+
+    <div class="main-content clearfix">
+      <div class="sidebar">
+        <div class="nav-section">
+          <h4>Getting Started</h4>
+          <a class="nav-link active" onclick="showSection('overview')">System Overview</a>
+          <a class="nav-link" onclick="showSection('setup')">Initial Setup</a>
+          <a class="nav-link" onclick="showSection('importing')">Importing Leads</a>
+        </div>
+        <div class="nav-section">
+          <h4>Core Features</h4>
+          <a class="nav-link" onclick="showSection('pipeline')">Running the Pipeline</a>
+          <a class="nav-link" onclick="showSection('strategies')">Strategy Engines</a>
+          <a class="nav-link" onclick="showSection('offers')">Offer Generation</a>
+          <a class="nav-link" onclick="showSection('buyers')">Buyer Matching</a>
+        </div>
+        <div class="nav-section">
+          <h4>Advanced</h4>
+          <a class="nav-link" onclick="showSection('stl')">Speed-to-Lead</a>
+          <a class="nav-link" onclick="showSection('crm')">CRM Integration</a>
+          <a class="nav-link" onclick="showSection('automation')">Automation</a>
+        </div>
+        <div class="nav-section">
+          <h4>Reference</h4>
+          <a class="nav-link" onclick="showSection('sheets')">Sheet Reference</a>
+          <a class="nav-link" onclick="showSection('formulas')">Key Formulas</a>
+          <a class="nav-link" onclick="showSection('troubleshooting')">Troubleshooting</a>
+        </div>
+      </div>
+
+      <div class="content-area">
+        <!-- Overview Section -->
+        <div class="help-section active" id="section-overview">
+          <h2>System Overview</h2>
+          <p>The Quantum Real Estate Analyzer is an investor-grade operating system for analyzing real estate deals, managing leads, and automating outreach.</p>
+
+          <h3>Key Capabilities</h3>
+          <ul>
+            <li><strong>Multi-Strategy Analysis</strong> - Flip, STR, MTR, LTR, and Creative Finance engines</li>
+            <li><strong>Sales Velocity System</strong> - DOM tracking, exit speed tiers, market heat</li>
+            <li><strong>SOM/Saturation Analysis</strong> - Market competition metrics</li>
+            <li><strong>Speed-to-Lead</strong> - SLA tracking and escalation</li>
+            <li><strong>Offer Generation</strong> - Cash, Sub2, Wrap, Seller Carry, Lease Option, Hybrid</li>
+            <li><strong>Buyer Matching</strong> - Match deals to your buyer database</li>
+            <li><strong>CRM Integration</strong> - SMS-iT, CompanyHub, OhMyLead</li>
+          </ul>
+
+          <h3>The Pipeline</h3>
+          <p>Data flows through these stages:</p>
+          <div class="code-block">
+Ingest -> Clean/Normalize -> Deduplicate -> Enrich -> Score ->
+Strategy Compare -> Verdict Rank -> Generate Offers -> Buyer Match ->
+CRM Sync -> Track Outcomes -> Tune Assumptions
+          </div>
+        </div>
+
+        <!-- Setup Section -->
+        <div class="help-section" id="section-setup">
+          <h2>Initial Setup</h2>
+
+          <div class="workflow-step">
+            <div class="step-number">1</div>
+            <div class="step-content">
+              <strong>Run Setup Wizard</strong>
+              <p>Go to Quantum Analyzer menu > HTML Interfaces > Open Setup Wizard</p>
+            </div>
+          </div>
+
+          <div class="workflow-step">
+            <div class="step-number">2</div>
+            <div class="step-content">
+              <strong>Initialize Sheets</strong>
+              <p>Click "Initialize All Sheets" to create the required sheet structure.</p>
+            </div>
+          </div>
+
+          <div class="workflow-step">
+            <div class="step-number">3</div>
+            <div class="step-content">
+              <strong>Configure Settings</strong>
+              <p>Adjust strategy parameters, SLA thresholds, and other preferences.</p>
+            </div>
+          </div>
+
+          <div class="workflow-step">
+            <div class="step-number">4</div>
+            <div class="step-content">
+              <strong>Set Up CRM (Optional)</strong>
+              <p>Enter API credentials for your CRM systems.</p>
+            </div>
+          </div>
+
+          <div class="tip-box">
+            <strong>Tip:</strong> You can re-run the setup wizard anytime without losing data.
+          </div>
+        </div>
+
+        <!-- Importing Section -->
+        <div class="help-section" id="section-importing">
+          <h2>Importing Leads</h2>
+
+          <h3>Browse AI / Scraping Sources</h3>
+          <ol>
+            <li>Configure Browse AI to export to your Staging sheet</li>
+            <li>Data appears in "Staging - Browse AI" sheet</li>
+            <li>Run "Ingest & Clean" from the Quantum menu</li>
+            <li>Leads appear in Master Database</li>
+          </ol>
+
+          <h3>Web & Ad Leads</h3>
+          <p>For leads from forms, landing pages, or ad campaigns:</p>
+          <ol>
+            <li>Enter leads in the "Web & Ad Leads" sheet</li>
+            <li>Run "Import Web & Ad Leads" from the menu</li>
+          </ol>
+
+          <h3>Required Fields</h3>
+          <ul>
+            <li>Address (required)</li>
+            <li>Price (required for analysis)</li>
+            <li>City, State, ZIP (recommended)</li>
+            <li>Beds, Baths, Sqft (for accurate estimates)</li>
+          </ul>
+
+          <div class="warning-box">
+            <strong>Note:</strong> Duplicate detection runs automatically. Leads with matching addresses will be merged.
+          </div>
+        </div>
+
+        <!-- Pipeline Section -->
+        <div class="help-section" id="section-pipeline">
+          <h2>Running the Pipeline</h2>
+
+          <h3>Full Pipeline</h3>
+          <p>The full pipeline runs all stages in sequence:</p>
+          <div class="code-block">Quantum Analyzer > Run Full Pipeline</div>
+
+          <h3>Individual Steps</h3>
+          <ul>
+            <li><strong>Ingest & Clean</strong> - Import from staging, normalize data</li>
+            <li><strong>Analyze & Score</strong> - Run all analysis engines, compute scores</li>
+            <li><strong>Generate Verdict</strong> - Create ranked verdict list</li>
+            <li><strong>Generate Offer Pack</strong> - Generate offers for all deals</li>
+            <li><strong>Buyer Match</strong> - Match deals to buyers</li>
+            <li><strong>Sync CRM</strong> - Push to connected CRMs</li>
+          </ul>
+
+          <div class="tip-box">
+            <strong>Tip:</strong> For large imports, run steps individually to monitor progress.
+          </div>
+        </div>
+
+        <!-- Strategies Section -->
+        <div class="help-section" id="section-strategies">
+          <h2>Strategy Engines</h2>
+
+          <h3>Flip Engine</h3>
+          <p>Analyzes wholesale/flip potential based on ARV, rehab costs, holding costs, and exit timeline.</p>
+          <ul>
+            <li>Calculates profit at different rehab scenarios</li>
+            <li>Considers DOM and velocity for exit risk</li>
+            <li>Outputs MAO (Maximum Allowable Offer)</li>
+          </ul>
+
+          <h3>STR Engine (Short-Term Rental)</h3>
+          <p>Analyzes Airbnb/VRBO potential:</p>
+          <ul>
+            <li>ADR (Average Daily Rate) estimation</li>
+            <li>Occupancy and seasonality factors</li>
+            <li>Regulation risk assessment</li>
+            <li>Cash-on-cash return calculation</li>
+          </ul>
+
+          <h3>MTR Engine (Medium-Term Rental)</h3>
+          <p>Analyzes furnished monthly rental potential:</p>
+          <ul>
+            <li>Furnished rent premium calculation</li>
+            <li>Vacancy smoothing between stays</li>
+            <li>Comparison to LTR returns</li>
+          </ul>
+
+          <h3>LTR Engine (Long-Term Rental)</h3>
+          <p>Traditional buy-and-hold analysis:</p>
+          <ul>
+            <li>DSCR (Debt Service Coverage Ratio)</li>
+            <li>NOI and cash flow calculation</li>
+            <li>Hold quality scoring</li>
+          </ul>
+
+          <h3>Creative Finance Engine</h3>
+          <p>Analyzes creative acquisition strategies:</p>
+          <ul>
+            <li>Subject-To viability</li>
+            <li>Wrap mortgage potential</li>
+            <li>Seller carry terms</li>
+            <li>Lease option structure</li>
+            <li>Hybrid combinations</li>
+          </ul>
+        </div>
+
+        <!-- Speed-to-Lead Section -->
+        <div class="help-section" id="section-stl">
+          <h2>Speed-to-Lead System</h2>
+
+          <p>Speed-to-Lead tracks how quickly you respond to new leads. Fast response = higher conversion.</p>
+
+          <h3>SLA Tiers</h3>
+          <ul>
+            <li><strong>Tier 1 (Optimal)</strong> - Under 5 minutes</li>
+            <li><strong>Tier 2 (Acceptable)</strong> - Under 15 minutes</li>
+            <li><strong>Tier 3 (Slow)</strong> - Under 60 minutes</li>
+            <li><strong>Breach</strong> - Over 60 minutes</li>
+          </ul>
+
+          <h3>How It Works</h3>
+          <ol>
+            <li>Lead arrival timestamp is recorded on import</li>
+            <li>System checks SLA status every 5 minutes</li>
+            <li>Breach status triggers escalation</li>
+            <li>Contact timestamp recorded when lead is contacted</li>
+          </ol>
+
+          <div class="warning-box">
+            <strong>Important:</strong> SLA breach applies a score penalty and can downgrade HOT leads to SOLID.
+          </div>
+        </div>
+
+        <!-- Sheets Reference Section -->
+        <div class="help-section" id="section-sheets">
+          <h2>Sheet Reference</h2>
+
+          <h3>Import & Staging</h3>
+          <ul>
+            <li><strong>Import Hub</strong> - Overview of all import sources</li>
+            <li><strong>Staging - Browse AI</strong> - Raw Browse AI data</li>
+            <li><strong>Staging - PropStream</strong> - PropStream exports</li>
+            <li><strong>Web & Ad Leads</strong> - Form/ad lead submissions</li>
+          </ul>
+
+          <h3>Core Data</h3>
+          <ul>
+            <li><strong>Master Database</strong> - All leads, normalized and scored</li>
+            <li><strong>Lead Scoring & Risk</strong> - Detailed score breakdown</li>
+          </ul>
+
+          <h3>Strategy Engines</h3>
+          <ul>
+            <li><strong>Flip Engine</strong> - Flip analysis results</li>
+            <li><strong>STR Engine</strong> - Short-term rental analysis</li>
+            <li><strong>MTR Engine</strong> - Medium-term rental analysis</li>
+            <li><strong>LTR Engine</strong> - Long-term rental analysis</li>
+            <li><strong>Creative Finance Engine</strong> - Creative deal structures</li>
+          </ul>
+
+          <h3>Outputs</h3>
+          <ul>
+            <li><strong>Verdict</strong> - Ranked deal list with actions</li>
+            <li><strong>Offer & Disposition</strong> - Generated offers and status</li>
+            <li><strong>Buyer Matching Engine</strong> - Deal-to-buyer matches</li>
+            <li><strong>Post-Sale Tracker</strong> - Outcome tracking</li>
+          </ul>
+        </div>
+
+        <!-- Troubleshooting Section -->
+        <div class="help-section" id="section-troubleshooting">
+          <h2>Troubleshooting</h2>
+
+          <h3>Sheets not created</h3>
+          <p>Run "Initialize All Sheets" from the Settings & Admin menu.</p>
+
+          <h3>Pipeline errors</h3>
+          <p>Check the Error Log sheet for details. Most errors are due to missing data.</p>
+
+          <h3>CRM not syncing</h3>
+          <ul>
+            <li>Verify API credentials in Settings</li>
+            <li>Check Sync Log for error messages</li>
+            <li>Ensure CRM is enabled in settings</li>
+          </ul>
+
+          <h3>Slow performance</h3>
+          <ul>
+            <li>Run pipeline on smaller batches</li>
+            <li>Clear old logs periodically</li>
+            <li>Archive old data from Master Database</li>
+          </ul>
+
+          <div class="tip-box">
+            <strong>Need more help?</strong> Run "Export Diagnostics" from the menu to generate a system report.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function showSection(sectionId) {
+      document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+      document.querySelectorAll('.help-section').forEach(s => s.classList.remove('active'));
+
+      event.target.classList.add('active');
+      document.getElementById('section-' + sectionId).classList.add('active');
+    }
+  </script>
+</body>
+</html>

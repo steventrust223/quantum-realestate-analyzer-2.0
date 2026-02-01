@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f5f7fa;
+      padding: 20px;
+    }
+    .container { max-width: 1000px; margin: 0 auto; }
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px 30px;
+      border-radius: 12px 12px 0 0;
+    }
+    .header h1 { font-size: 1.5em; }
+    .main-content {
+      background: white;
+      border-radius: 0 0 12px 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+      padding: 30px;
+    }
+    .form-section {
+      margin-bottom: 30px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #eee;
+    }
+    .form-section h3 {
+      color: #667eea;
+      margin-bottom: 15px;
+    }
+    .form-row {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 15px;
+    }
+    .form-group {
+      flex: 1;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #333;
+    }
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 1em;
+    }
+    .form-group input:focus, .form-group select:focus {
+      border-color: #667eea;
+      outline: none;
+    }
+    .btn {
+      padding: 12px 30px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1em;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+    .results-section { margin-top: 30px; }
+    .offer-results {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+    }
+    .offer-card {
+      background: #f8f9fa;
+      padding: 25px;
+      border-radius: 12px;
+      border: 2px solid #e0e0e0;
+    }
+    .offer-card.recommended {
+      border-color: #4CAF50;
+      background: #e8f5e9;
+    }
+    .offer-card h4 {
+      color: #667eea;
+      margin-bottom: 15px;
+      font-size: 1.1em;
+    }
+    .offer-price {
+      font-size: 2em;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 10px;
+    }
+    .offer-detail {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #ddd;
+      font-size: 0.9em;
+    }
+    .offer-detail:last-child { border-bottom: none; }
+    .offer-detail .label { color: #666; }
+    .offer-detail .value { font-weight: 600; }
+    .risk-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 15px;
+      font-size: 0.8em;
+      font-weight: 600;
+      margin-top: 10px;
+    }
+    .risk-low { background: #c8e6c9; color: #2e7d32; }
+    .risk-mod { background: #fff3e0; color: #ef6c00; }
+    .risk-high { background: #ffcdd2; color: #c62828; }
+    .summary-box {
+      background: #e3f2fd;
+      padding: 20px;
+      border-radius: 10px;
+      margin-top: 20px;
+      border-left: 4px solid #2196F3;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Offer Generator</h1>
+      <p>Generate comprehensive offer packs for any property</p>
+    </div>
+
+    <div class="main-content">
+      <div class="form-section">
+        <h3>Property Information</h3>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Address</label>
+            <input type="text" id="address" placeholder="123 Main St">
+          </div>
+          <div class="form-group">
+            <label>City, State ZIP</label>
+            <input type="text" id="location" placeholder="Austin, TX 78701">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Asking Price ($)</label>
+            <input type="number" id="asking-price" placeholder="250000">
+          </div>
+          <div class="form-group">
+            <label>ARV ($)</label>
+            <input type="number" id="arv" placeholder="320000">
+          </div>
+          <div class="form-group">
+            <label>Sqft</label>
+            <input type="number" id="sqft" placeholder="1500">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h3>Rehab Estimate</h3>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Repair Complexity</label>
+            <select id="repair-complexity">
+              <option value="COSMETIC">Cosmetic ($5-15/sqft)</option>
+              <option value="MODERATE" selected>Moderate ($15-35/sqft)</option>
+              <option value="HEAVY">Heavy ($35-60/sqft)</option>
+              <option value="FULL_GUT">Full Gut ($60-100/sqft)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Est. Rehab Low ($)</label>
+            <input type="number" id="rehab-low" placeholder="Auto-calculated">
+          </div>
+          <div class="form-group">
+            <label>Est. Rehab High ($)</label>
+            <input type="number" id="rehab-high" placeholder="Auto-calculated">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h3>Creative Finance Info (Optional)</h3>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Existing Mortgage Balance ($)</label>
+            <input type="number" id="mortgage-balance" placeholder="150000">
+          </div>
+          <div class="form-group">
+            <label>Monthly Payment ($)</label>
+            <input type="number" id="monthly-payment" placeholder="1200">
+          </div>
+          <div class="form-group">
+            <label>Interest Rate (%)</label>
+            <input type="number" id="interest-rate" placeholder="4.5" step="0.1">
+          </div>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" onclick="generateOffers()">Generate Offer Pack</button>
+
+      <div class="results-section" id="results" style="display: none;">
+        <h3 style="margin-bottom: 20px; color: #333;">Generated Offers</h3>
+
+        <div class="offer-results">
+          <!-- Cash Offer -->
+          <div class="offer-card" id="cash-offer">
+            <h4>Cash Offer</h4>
+            <div class="offer-price" id="cash-price">--</div>
+            <div class="offer-detail">
+              <span class="label">Discount from Asking</span>
+              <span class="value" id="cash-discount">--</span>
+            </div>
+            <div class="offer-detail">
+              <span class="label">Projected Profit</span>
+              <span class="value" id="cash-profit">--</span>
+            </div>
+            <div class="offer-detail">
+              <span class="label">ROI</span>
+              <span class="value" id="cash-roi">--</span>
+            </div>
+            <span class="risk-badge risk-low" id="cash-risk">Low Risk</span>
+          </div>
+
+          <!-- Sub2 Offer -->
+          <div class="offer-card" id="sub2-offer">
+            <h4>Subject-To Offer</h4>
+            <div class="offer-price" id="sub2-price">--</div>
+            <div class="offer-detail">
+              <span class="label">Entry Cost</span>
+              <span class="value" id="sub2-entry">--</span>
+            </div>
+            <div class="offer-detail">
+              <span class="label">Monthly Cash Flow</span>
+              <span class="value" id="sub2-cashflow">--</span>
+            </div>
+            <div class="offer-detail">
+              <span class="label">Equity Position</span>
+              <span class="value" id="sub2-equity">--</span>
+            </div>
+            <span class="risk-badge risk-mod" id="sub2-risk">Moderate Risk</span>
+          </div>
+
+          <!-- Wrap Offer -->
+          <div class="offer-card" id="wrap-offer">
+            <h4>Wrap Mortgage</h4>
+            <div class="offer-price" id="wrap-price">--</div>
+            <div class="offer-detail">
+              <span class="label">Monthly Spread</span>
+              <span class="value" id="wrap-spread">--</span>
+            </div>
+            <div class="offer-detail">
+              <span class="label">End Buyer Down</span>
+              <span class="value" id="wrap-down">--</span>
+            </div>
+            <div class="offer-detail">
+              <span class="label">Wrap Rate</span>
+              <span class="value" id="wrap-rate">--</span>
+            </div>
+            <span class="risk-badge risk-mod" id="wrap-risk">Moderate Risk</span>
+          </div>
+
+          <!-- Seller Carry -->
+          <div class="offer-card" id="carry-offer">
+            <h4>Seller Carry</h4>
+            <div class="offer-price" id="carry-price">--</div>
+            <div class="offer-detail">
+              <span class="label">Down Payment</span>
+              <span class="value" id="carry-down">--</span>
+            </div>
+            <div class="offer-detail">
+              <span class="label">Monthly Payment</span>
+              <span class="value" id="carry-payment">--</span>
+            </div>
+            <div class="offer-detail">
+              <span class="label">Terms</span>
+              <span class="value" id="carry-terms">--</span>
+            </div>
+            <span class="risk-badge risk-low" id="carry-risk">Low Risk</span>
+          </div>
+
+          <!-- Lease Option -->
+          <div class="offer-card" id="lo-offer">
+            <h4>Lease Option</h4>
+            <div class="offer-price" id="lo-price">--</div>
+            <div class="offer-detail">
+              <span class="label">Option Fee</span>
+              <span class="value" id="lo-fee">--</span>
+            </div>
+            <div class="offer-detail">
+              <span class="label">Monthly Rent</span>
+              <span class="value" id="lo-rent">--</span>
+            </div>
+            <div class="offer-detail">
+              <span class="label">Strike Price</span>
+              <span class="value" id="lo-strike">--</span>
+            </div>
+            <span class="risk-badge risk-mod" id="lo-risk">Moderate Risk</span>
+          </div>
+
+          <!-- Hybrid -->
+          <div class="offer-card" id="hybrid-offer">
+            <h4>Hybrid Structure</h4>
+            <div class="offer-price" id="hybrid-price">--</div>
+            <div class="offer-detail">
+              <span class="label">Structure</span>
+              <span class="value" id="hybrid-structure">--</span>
+            </div>
+            <div class="offer-detail">
+              <span class="label">Monthly Cash Flow</span>
+              <span class="value" id="hybrid-cashflow">--</span>
+            </div>
+            <span class="risk-badge risk-high" id="hybrid-risk">Higher Complexity</span>
+          </div>
+        </div>
+
+        <div class="summary-box">
+          <h4 style="margin-bottom: 10px; color: #1976D2;">Recommended Strategy</h4>
+          <p id="recommendation">Based on your inputs, the recommended approach is...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Auto-calculate rehab based on complexity
+    document.getElementById('repair-complexity').addEventListener('change', updateRehabEstimate);
+    document.getElementById('sqft').addEventListener('input', updateRehabEstimate);
+
+    function updateRehabEstimate() {
+      const sqft = parseInt(document.getElementById('sqft').value) || 1500;
+      const complexity = document.getElementById('repair-complexity').value;
+
+      const ranges = {
+        'COSMETIC': { low: 5, high: 15 },
+        'MODERATE': { low: 15, high: 35 },
+        'HEAVY': { low: 35, high: 60 },
+        'FULL_GUT': { low: 60, high: 100 }
+      };
+
+      const range = ranges[complexity];
+      document.getElementById('rehab-low').value = sqft * range.low;
+      document.getElementById('rehab-high').value = sqft * range.high;
+    }
+
+    function generateOffers() {
+      const askingPrice = parseInt(document.getElementById('asking-price').value) || 0;
+      const arv = parseInt(document.getElementById('arv').value) || askingPrice * 1.2;
+      const rehabLow = parseInt(document.getElementById('rehab-low').value) || 0;
+      const rehabHigh = parseInt(document.getElementById('rehab-high').value) || 0;
+      const rehabMid = (rehabLow + rehabHigh) / 2;
+      const mortgageBalance = parseInt(document.getElementById('mortgage-balance').value) || askingPrice * 0.6;
+      const monthlyPayment = parseInt(document.getElementById('monthly-payment').value) || 0;
+
+      // Cash Offer calculation
+      const holdingCosts = askingPrice * 0.04;
+      const agentFees = arv * 0.06;
+      const closingCosts = askingPrice * 0.03;
+      const targetProfit = arv * 0.20;
+      const cashOffer = arv - rehabMid - holdingCosts - agentFees - closingCosts - targetProfit;
+      const cashDiscount = ((askingPrice - cashOffer) / askingPrice * 100).toFixed(1);
+      const cashProfit = arv - cashOffer - rehabMid - holdingCosts - agentFees - closingCosts;
+      const cashROI = (cashProfit / (cashOffer + rehabMid) * 100).toFixed(1);
+
+      document.getElementById('cash-price').textContent = formatCurrency(cashOffer);
+      document.getElementById('cash-discount').textContent = cashDiscount + '%';
+      document.getElementById('cash-profit').textContent = formatCurrency(cashProfit);
+      document.getElementById('cash-roi').textContent = cashROI + '%';
+
+      // Sub2 calculation
+      const equity = askingPrice - mortgageBalance;
+      const sub2Entry = Math.max(5000, equity * 0.15);
+      const estimatedRent = askingPrice * 0.007; // 0.7% rule rough estimate
+      const sub2CashFlow = monthlyPayment > 0 ? estimatedRent - monthlyPayment - (estimatedRent * 0.15) : estimatedRent * 0.5;
+
+      document.getElementById('sub2-price').textContent = formatCurrency(sub2Entry);
+      document.getElementById('sub2-entry').textContent = formatCurrency(sub2Entry);
+      document.getElementById('sub2-cashflow').textContent = formatCurrency(sub2CashFlow) + '/mo';
+      document.getElementById('sub2-equity').textContent = formatCurrency(equity);
+
+      // Wrap calculation
+      const wrapRate = 0.065;
+      const wrapPrice = askingPrice * 1.02;
+      const wrapDown = wrapPrice * 0.05;
+      const wrapPayment = calculateMortgage(wrapPrice - wrapDown, wrapRate, 30);
+      const wrapSpread = monthlyPayment > 0 ? wrapPayment - monthlyPayment : wrapPayment * 0.3;
+
+      document.getElementById('wrap-price').textContent = formatCurrency(wrapPrice);
+      document.getElementById('wrap-spread').textContent = formatCurrency(wrapSpread) + '/mo';
+      document.getElementById('wrap-down').textContent = formatCurrency(wrapDown);
+      document.getElementById('wrap-rate').textContent = (wrapRate * 100).toFixed(1) + '%';
+
+      // Seller Carry calculation
+      const carryDown = askingPrice * 0.10;
+      const carryPayment = calculateMortgage(askingPrice - carryDown, 0.06, 5);
+
+      document.getElementById('carry-price').textContent = formatCurrency(askingPrice);
+      document.getElementById('carry-down').textContent = formatCurrency(carryDown);
+      document.getElementById('carry-payment').textContent = formatCurrency(carryPayment) + '/mo';
+      document.getElementById('carry-terms').textContent = '6% / 5yr / 3yr balloon';
+
+      // Lease Option calculation
+      const loFee = askingPrice * 0.03;
+      const loRent = estimatedRent * 1.1;
+      const loStrike = askingPrice * 1.03;
+
+      document.getElementById('lo-price').textContent = formatCurrency(loFee);
+      document.getElementById('lo-fee').textContent = formatCurrency(loFee);
+      document.getElementById('lo-rent').textContent = formatCurrency(loRent) + '/mo';
+      document.getElementById('lo-strike').textContent = formatCurrency(loStrike);
+
+      // Hybrid
+      document.getElementById('hybrid-price').textContent = formatCurrency(sub2Entry);
+      document.getElementById('hybrid-structure').textContent = 'Sub2 + Wrap';
+      document.getElementById('hybrid-cashflow').textContent = formatCurrency(wrapSpread) + '/mo';
+
+      // Recommendation
+      let recommendation = '';
+      if (cashProfit >= 30000 && cashROI >= 20) {
+        recommendation = 'Cash flip offers strong returns. Consider cash offer at ' + formatCurrency(cashOffer);
+        document.getElementById('cash-offer').classList.add('recommended');
+      } else if (equity >= askingPrice * 0.15 && equity <= askingPrice * 0.50 && sub2CashFlow >= 200) {
+        recommendation = 'Subject-To is viable with positive cash flow. Low entry cost of ' + formatCurrency(sub2Entry);
+        document.getElementById('sub2-offer').classList.add('recommended');
+      } else {
+        recommendation = 'Consider seller financing or lease option for creative exit strategies.';
+        document.getElementById('carry-offer').classList.add('recommended');
+      }
+      document.getElementById('recommendation').textContent = recommendation;
+
+      document.getElementById('results').style.display = 'block';
+    }
+
+    function formatCurrency(value) {
+      return '$' + Math.round(value).toLocaleString();
+    }
+
+    function calculateMortgage(principal, annualRate, years) {
+      const monthlyRate = annualRate / 12;
+      const numPayments = years * 12;
+      return principal * (monthlyRate * Math.pow(1 + monthlyRate, numPayments)) /
+        (Math.pow(1 + monthlyRate, numPayments) - 1);
+    }
+
+    // Initialize
+    updateRehabEstimate();
+  </script>
+</body>
+</html>

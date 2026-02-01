@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f5f7fa;
+      padding: 20px;
+    }
+    .container { max-width: 1000px; margin: 0 auto; }
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px 30px;
+      border-radius: 12px 12px 0 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .header h1 { font-size: 1.5em; }
+    .main-content {
+      background: white;
+      border-radius: 0 0 12px 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+      padding: 30px;
+    }
+    .tabs { display: flex; border-bottom: 2px solid #e0e0e0; margin-bottom: 25px; }
+    .tab {
+      padding: 12px 25px;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      font-weight: 500;
+    }
+    .tab:hover { background: #f5f5f5; }
+    .tab.active { border-bottom-color: #667eea; color: #667eea; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+    .stat-card {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+    }
+    .stat-value { font-size: 2em; font-weight: bold; color: #667eea; }
+    .stat-label { color: #666; font-size: 0.9em; }
+    .form-row { display: flex; gap: 15px; margin-bottom: 15px; }
+    .form-group { flex: 1; }
+    .form-group label { display: block; margin-bottom: 8px; font-weight: 600; }
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 10px;
+      border: 2px solid #e0e0e0;
+      border-radius: 6px;
+      font-size: 1em;
+    }
+    .btn {
+      padding: 10px 25px;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    .btn-primary:hover { transform: translateY(-2px); }
+    .btn-secondary { background: #e0e0e0; color: #333; }
+    .buyer-list { margin-top: 20px; }
+    .buyer-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      margin-bottom: 10px;
+    }
+    .buyer-item:hover { background: #f8f9fa; }
+    .buyer-name { font-weight: 600; color: #333; }
+    .buyer-details { color: #666; font-size: 0.9em; }
+    .buyer-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 15px;
+      font-size: 0.8em;
+      font-weight: 600;
+    }
+    .badge-active { background: #c8e6c9; color: #2e7d32; }
+    .badge-inactive { background: #ffcdd2; color: #c62828; }
+    .match-card {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 15px;
+      border-left: 4px solid #667eea;
+    }
+    .match-header { display: flex; justify-content: space-between; margin-bottom: 10px; }
+    .match-score {
+      font-size: 1.5em;
+      font-weight: bold;
+      color: #4CAF50;
+    }
+    .match-reasons { color: #666; font-size: 0.9em; }
+    .section-title { font-size: 1.1em; color: #333; margin: 20px 0 15px; }
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .table th, .table td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #eee;
+    }
+    .table th { background: #f5f5f5; font-weight: 600; }
+    .table tr:hover { background: #f8f9fa; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Buyer Matching Engine</h1>
+      <button class="btn btn-primary" onclick="runMatching()">Run Matching</button>
+    </div>
+
+    <div class="main-content">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value" id="total-buyers">0</div>
+          <div class="stat-label">Total Buyers</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="active-buyers">0</div>
+          <div class="stat-label">Active Buyers</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="deals-matched">0</div>
+          <div class="stat-label">Deals Matched</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="deals-pending">0</div>
+          <div class="stat-label">Pending Deals</div>
+        </div>
+      </div>
+
+      <div class="tabs">
+        <div class="tab active" onclick="showTab('buyers')">Buyer Database</div>
+        <div class="tab" onclick="showTab('matches')">Deal Matches</div>
+        <div class="tab" onclick="showTab('add')">Add Buyer</div>
+      </div>
+
+      <!-- Buyer Database Tab -->
+      <div class="tab-content active" id="tab-buyers">
+        <h3 class="section-title">Active Buyers</h3>
+        <div class="buyer-list" id="buyer-list">
+          <p style="color: #666;">Loading buyers...</p>
+        </div>
+      </div>
+
+      <!-- Deal Matches Tab -->
+      <div class="tab-content" id="tab-matches">
+        <h3 class="section-title">Recent Deal Matches</h3>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Property</th>
+              <th>Strategy</th>
+              <th>Top Match</th>
+              <th>Score</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="matches-table">
+            <tr><td colspan="5" style="color: #666;">Loading matches...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Add Buyer Tab -->
+      <div class="tab-content" id="tab-add">
+        <h3 class="section-title">Add New Buyer</h3>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Buyer Name</label>
+            <input type="text" id="new-buyer-name" placeholder="John Smith">
+          </div>
+          <div class="form-group">
+            <label>Company</label>
+            <input type="text" id="new-buyer-company" placeholder="ABC Investments">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="new-buyer-email" placeholder="john@example.com">
+          </div>
+          <div class="form-group">
+            <label>Phone</label>
+            <input type="tel" id="new-buyer-phone" placeholder="555-123-4567">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Target ZIPs (comma-separated)</label>
+            <input type="text" id="new-buyer-zips" placeholder="78701, 78702, 78703">
+          </div>
+          <div class="form-group">
+            <label>Strategy Preference</label>
+            <select id="new-buyer-strategy">
+              <option value="Any">Any</option>
+              <option value="Wholesale">Wholesale</option>
+              <option value="Flip">Flip</option>
+              <option value="STR">STR</option>
+              <option value="MTR">MTR</option>
+              <option value="LTR">LTR</option>
+              <option value="Creative">Creative</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Budget Min ($)</label>
+            <input type="number" id="new-buyer-budget-min" placeholder="100000">
+          </div>
+          <div class="form-group">
+            <label>Budget Max ($)</label>
+            <input type="number" id="new-buyer-budget-max" placeholder="500000">
+          </div>
+          <div class="form-group">
+            <label>Risk Tolerance</label>
+            <select id="new-buyer-risk">
+              <option value="Conservative">Conservative</option>
+              <option value="Moderate" selected>Moderate</option>
+              <option value="Aggressive">Aggressive</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Notes</label>
+          <input type="text" id="new-buyer-notes" placeholder="Additional buyer preferences...">
+        </div>
+        <button class="btn btn-primary" onclick="addBuyer()" style="margin-top: 15px;">Add Buyer</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function showTab(tabName) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+      event.target.classList.add('active');
+      document.getElementById('tab-' + tabName).classList.add('active');
+    }
+
+    function loadStats() {
+      google.script.run
+        .withSuccessHandler(function(stats) {
+          document.getElementById('total-buyers').textContent = stats.totalBuyers || 0;
+          document.getElementById('active-buyers').textContent = stats.activeBuyers || 0;
+        })
+        .getBuyerStatistics();
+    }
+
+    function loadBuyers() {
+      google.script.run
+        .withSuccessHandler(function(buyers) {
+          const list = document.getElementById('buyer-list');
+          if (!buyers || buyers.length === 0) {
+            list.innerHTML = '<p style="color: #666;">No buyers in database. Add buyers in the "Add Buyer" tab.</p>';
+            return;
+          }
+
+          list.innerHTML = buyers.map(buyer => `
+            <div class="buyer-item">
+              <div>
+                <div class="buyer-name">${buyer['Buyer Name'] || 'Unknown'}</div>
+                <div class="buyer-details">
+                  ${buyer['Company'] || ''} | ${buyer['Strategy Preference'] || 'Any'} |
+                  $${(buyer['Budget Min'] || 0).toLocaleString()} - $${(buyer['Budget Max'] || 0).toLocaleString()}
+                </div>
+                <div class="buyer-details">ZIPs: ${buyer['ZIPs'] || 'Any'}</div>
+              </div>
+              <div>
+                <span class="buyer-badge ${buyer['Active'] === 'Yes' ? 'badge-active' : 'badge-inactive'}">
+                  ${buyer['Active'] === 'Yes' ? 'Active' : 'Inactive'}
+                </span>
+              </div>
+            </div>
+          `).join('');
+        })
+        .getActiveBuyers();
+    }
+
+    function loadMatches() {
+      // Load recent matches from matching sheet
+      google.script.run
+        .withSuccessHandler(function(deals) {
+          const table = document.getElementById('matches-table');
+          if (!deals || deals.length === 0) {
+            table.innerHTML = '<tr><td colspan="5" style="color: #666;">No matches yet. Run the matching engine.</td></tr>';
+            return;
+          }
+
+          table.innerHTML = deals.slice(0, 20).map(deal => `
+            <tr>
+              <td>${deal['Address'] || '--'}</td>
+              <td>${deal['Best Strategy'] || '--'}</td>
+              <td>${deal['Match 1 Buyer'] || 'No match'}</td>
+              <td>${deal['Match 1 Score'] || '--'}</td>
+              <td><button class="btn btn-secondary" onclick="assignDeal('${deal['Deal ID']}')">Assign</button></td>
+            </tr>
+          `).join('');
+
+          document.getElementById('deals-matched').textContent = deals.filter(d => d['Match 1 Buyer']).length;
+          document.getElementById('deals-pending').textContent = deals.filter(d => !d['Match 1 Buyer']).length;
+        })
+        .getTopDeals(50);
+    }
+
+    function addBuyer() {
+      const buyerData = {
+        name: document.getElementById('new-buyer-name').value,
+        company: document.getElementById('new-buyer-company').value,
+        email: document.getElementById('new-buyer-email').value,
+        phone: document.getElementById('new-buyer-phone').value,
+        zips: document.getElementById('new-buyer-zips').value,
+        strategy: document.getElementById('new-buyer-strategy').value,
+        budgetMin: document.getElementById('new-buyer-budget-min').value,
+        budgetMax: document.getElementById('new-buyer-budget-max').value,
+        riskTolerance: document.getElementById('new-buyer-risk').value,
+        notes: document.getElementById('new-buyer-notes').value
+      };
+
+      if (!buyerData.name) {
+        alert('Please enter a buyer name');
+        return;
+      }
+
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.success) {
+            alert('Buyer added successfully!');
+            loadBuyers();
+            loadStats();
+            // Clear form
+            document.querySelectorAll('#tab-add input').forEach(i => i.value = '');
+          } else {
+            alert('Error: ' + result.error);
+          }
+        })
+        .addBuyer(buyerData);
+    }
+
+    function runMatching() {
+      google.script.run
+        .withSuccessHandler(function() {
+          alert('Matching complete!');
+          loadMatches();
+        })
+        .runBuyerMatching();
+    }
+
+    function assignDeal(dealId) {
+      // Open assignment dialog or auto-assign
+      alert('Deal ' + dealId + ' - Assignment feature coming soon');
+    }
+
+    // Initialize
+    loadStats();
+    loadBuyers();
+    loadMatches();
+  </script>
+</body>
+</html>
