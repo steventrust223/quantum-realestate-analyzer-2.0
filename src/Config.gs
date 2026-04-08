@@ -37,6 +37,14 @@ const CONFIG = {
     BUYER_DATABASE: 'Buyer Database',
     POST_SALE: 'Post-Sale Tracker',
 
+    // Institutional Disposition Layer
+    INST_BUYERS: 'Institutional Buyers',
+    INST_BUY_BOX_MATCHER: 'Buyer Buy Box Matcher',
+    INST_DEAL_PACKAGE: 'Institutional Deal Package',
+    INST_PORTFOLIO_BUILDER: 'Portfolio Builder',
+    INST_DISPOSITION_TRACKER: 'Disposition Tracker',
+    INST_DASHBOARD: 'Institutional Dashboard',
+
     // Admin & Config
     SETTINGS: 'Settings',
     DASHBOARD: 'Dashboard',
@@ -172,6 +180,69 @@ const CONFIG = {
     }
   },
 
+  // Institutional Disposition Settings
+  INSTITUTIONAL: {
+    // Scoring weights (must sum to 100)
+    WEIGHTS: {
+      rentReadiness: 15,
+      capRate: 15,
+      rehabBurden: 12,
+      neighborhoodQuality: 12,
+      occupancyCondition: 10,
+      landlordFriendliness: 8,
+      assetSimplicity: 8,
+      pricingFit: 8,
+      geographicConsistency: 6,
+      portfolioCompatibility: 6
+    },
+    // Grade thresholds
+    GRADES: {
+      INSTITUTIONAL_PRIME: { minScore: 85, color: '#1B5E20', label: 'INSTITUTIONAL PRIME' },
+      INSTITUTIONAL_FIT: { minScore: 70, color: '#2E7D32', label: 'INSTITUTIONAL FIT' },
+      LOCAL_LANDLORD_FIT: { minScore: 55, color: '#558B2F', label: 'LOCAL LANDLORD FIT' },
+      PORTFOLIO_ONLY: { minScore: 40, color: '#F57F17', label: 'PORTFOLIO ONLY' },
+      NOT_INSTITUTIONAL: { minScore: 0, color: '#BF360C', label: 'NOT INSTITUTIONAL' }
+    },
+    // Disposition priority engine
+    DISPOSITION_PRIORITY: {
+      SEND_NOW: { minScore: 80, minCapRate: 0.06, maxRehab: 30000, label: 'SEND NOW' },
+      HOLD_FOR_PORTFOLIO: { minScore: 60, label: 'HOLD FOR PORTFOLIO' },
+      LOCAL_LANDLORD_FIRST: { minScore: 50, label: 'LOCAL LANDLORD FIRST' },
+      REVIEW_MANUALLY: { minScore: 30, label: 'REVIEW MANUALLY' },
+      NOT_A_FIT: { minScore: 0, label: 'NOT A FIT' }
+    },
+    // Portfolio appeal tiers
+    PORTFOLIO_APPEAL: {
+      BULK_READY: { minScore: 85, label: 'BULK READY', color: '#1B5E20' },
+      STRONG_PORTFOLIO: { minScore: 70, label: 'STRONG PORTFOLIO', color: '#2E7D32' },
+      LOCAL_PACKAGE: { minScore: 55, label: 'LOCAL PACKAGE', color: '#558B2F' },
+      MIXED_QUALITY: { minScore: 35, label: 'MIXED QUALITY', color: '#F57F17' },
+      DO_NOT_BUNDLE: { minScore: 0, label: 'DO NOT BUNDLE', color: '#BF360C' }
+    },
+    // Buyer reliability tiers
+    BUYER_RELIABILITY: {
+      PLATINUM: { minCloseRate: 0.40, minResponseRate: 0.80, label: 'PLATINUM' },
+      GOLD: { minCloseRate: 0.25, minResponseRate: 0.60, label: 'GOLD' },
+      SILVER: { minCloseRate: 0.10, minResponseRate: 0.40, label: 'SILVER' },
+      BRONZE: { minCloseRate: 0, minResponseRate: 0, label: 'BRONZE' }
+    },
+    // Default thresholds for automation
+    DEFAULTS: {
+      minCapRate: 0.06,
+      maxRehab: 40000,
+      minInstitutionalScore: 60,
+      minPortfolioSize: 3,
+      minMatchScore: 50,
+      packageCompletenessThreshold: 0.75
+    }
+  },
+
+  // CRM Deal Stages (CompanyHub pipeline)
+  CRM_STAGES: [
+    'Hot Deal', 'Contacted', 'Negotiating', 'Inspecting',
+    'Bought', 'Repairing', 'Listed', 'Sold', 'Dead'
+  ],
+
   // AI/Messaging Settings
   AI: {
     openaiEnabled: false,
@@ -288,6 +359,7 @@ const CONFIG = {
       'Rank', 'Deal ID', 'Address', 'City', 'ZIP', 'Asking Price', 'ARV',
       'Deal Score', 'Risk Score', 'Verdict', 'Best Strategy', 'Offer Type',
       'Offer Target', 'Exit Speed Tier', 'SOM Score', 'SLA Status',
+      'Institutional Grade', 'Disposition Priority',
       'Next Action', 'Seller Message Preview', 'Action Link'
     ],
 
@@ -342,6 +414,83 @@ const CONFIG = {
 
     SYNC_LOG: [
       'Timestamp', 'CRM System', 'Action', 'Record ID', 'Status', 'Details'
+    ],
+
+    // ── Institutional Disposition Layer Columns ──
+
+    INST_BUYERS: [
+      'Buyer ID', 'Buyer Name', 'Buyer Type', 'Primary Contact Name', 'Primary Contact Title',
+      'Email', 'Phone', 'Company', 'Website', 'Target Market State', 'Target Market City',
+      'Preferred ZIP Codes', 'Asset Type', 'Preferred Strategy', 'Min Price', 'Max Price',
+      'Min Beds', 'Max Beds', 'Min Baths', 'Max Baths', 'Min Sq Ft', 'Max Sq Ft',
+      'Year Built Minimum', 'Condition Preference', 'Occupancy Preference',
+      'Min Rent', 'Min Cap Rate', 'Min Cash-on-Cash Return', 'Max Rehab Budget',
+      'Preferred Neighborhood Grade', 'Landlord Friendly Only?', 'Wants Tenant Occupied?',
+      'Wants Vacant?', 'Bulk Buyer?', 'Minimum Portfolio Size', 'Maximum Portfolio Size',
+      'Preferred Deal Class', 'Accepts Off-Market?', 'Accepts Assigned Contracts?',
+      'Cash Buyer?', 'Proof of Funds On File?', 'Priority Score', 'Warmth Status',
+      'Last Contacted', 'Last Response', 'Buyer Status',
+      // Buyer relationship intelligence
+      'Deals Sent', 'Deals Responded', 'Deals Closed', 'Response Rate',
+      'Close Rate', 'Avg Response Time (hrs)', 'Buyer Reliability Tier',
+      'Acquisition Notes', 'Disposition Notes', 'Tags'
+    ],
+
+    INST_BUY_BOX_MATCHER: [
+      'Match ID', 'Deal ID', 'Address', 'City', 'State', 'ZIP',
+      'Buyer ID', 'Buyer Name', 'Buyer Type', 'Strategy Type',
+      'Asking Price', 'Offer Target', 'Estimated Rent', 'Cap Rate', 'Cash-on-Cash Return',
+      'Beds', 'Baths', 'Sq Ft', 'Year Built', 'Condition', 'Occupancy',
+      'Neighborhood Grade', 'Rehab Estimate', 'Deal Classifier', 'Institutional Grade',
+      'Portfolio Eligible', 'Buy Box Match Score', 'Match Reason',
+      'Primary Match Flags', 'Disqualifying Flags', 'Disposition Priority',
+      'Recommended Buyer Action', 'Ready to Send?', 'Sent?', 'Sent Date',
+      'Response Status', 'Notes'
+    ],
+
+    INST_DEAL_PACKAGE: [
+      'Package ID', 'Deal ID', 'Address', 'City', 'State', 'ZIP', 'Property Type',
+      'Strategy Type', 'Beds', 'Baths', 'Sq Ft', 'Lot Size', 'Year Built',
+      'Occupancy', 'Lease Status', 'Monthly Rent', 'Annual Rent',
+      'Asking Price', 'Offer Price', 'Estimated Rehab', 'Estimated Total Investment',
+      'Estimated ARV', 'Estimated Exit Value', 'Cap Rate', 'Cash-on-Cash Return',
+      'Projected Equity Spread', 'Projected Profit', 'Neighborhood Grade',
+      'School Rating', 'Crime Indicator', 'Landlord Friendly Score',
+      'Market Strength Score', 'Sales Velocity Score', 'Institutional Grade',
+      'Portfolio Group ID', 'Portfolio Eligible', 'Deal Classifier', 'Risk Rating',
+      'Primary Value Drivers', 'Primary Risk Flags', 'Listing URL', 'Photo Link',
+      'Map Link', 'Analyst Notes', 'AI Summary',
+      'Package Completeness Score', 'Package Ready?', 'Disposition Status'
+    ],
+
+    INST_PORTFOLIO_BUILDER: [
+      'Portfolio Group ID', 'Portfolio Name', 'Deal Count', 'State', 'City',
+      'ZIP Cluster', 'Asset Type Mix', 'Strategy Mix', 'Average Asking Price',
+      'Average Offer Price', 'Average Rent', 'Average Cap Rate',
+      'Average Cash-on-Cash Return', 'Average Rehab', 'Average Sq Ft',
+      'Total Estimated Portfolio Cost', 'Total Estimated Annual Rent',
+      'Total Estimated Profit', 'Portfolio Risk Rating', 'Portfolio Strength Rating',
+      'Institutional Appeal Score', 'Bulk Buyer Fit', 'Geographic Consistency',
+      'Occupancy Mix', 'Neighborhood Consistency', 'Package Status',
+      'Assigned Buyer Targets', 'Notes'
+    ],
+
+    INST_DISPOSITION_TRACKER: [
+      'Disposition ID', 'Deal ID', 'Address', 'Buyer ID', 'Buyer Name', 'Buyer Type',
+      'Contact Name', 'Email', 'Phone', 'Matched By System?', 'Disposition Tier',
+      'Sent Package?', 'Sent Date', 'Last Follow-Up', 'Follow-Up Count',
+      'Response Status', 'Interest Level', 'Negotiation Status', 'Offer Received',
+      'Counter Sent', 'Final Terms', 'Closed?', 'Pass Reason',
+      'Next Action', 'Assigned To', 'Notes'
+    ],
+
+    // Additional columns to add to Master DB for institutional support
+    MASTER_DB_INSTITUTIONAL: [
+      'Institutional Grade', 'Institutional Grade Score', 'Portfolio Eligible',
+      'Portfolio Group Suggestion', 'Cap Rate', 'Cash-on-Cash Return',
+      'Estimated Annual Rent', 'Neighborhood Grade', 'Landlord Friendly Score',
+      'Institutional Buyer Fit', 'Best Buyer Type', 'Best Match Buyer',
+      'Disposition Priority', 'Package Ready?', 'Disposition Status'
     ]
   }
 };

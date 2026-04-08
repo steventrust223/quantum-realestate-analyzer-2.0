@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f7fa; padding: 20px; }
+    .container { max-width: 1000px; margin: 0 auto; }
+    .header {
+      background: linear-gradient(135deg, #4A148C 0%, #7B1FA2 100%);
+      color: white; padding: 20px 30px; border-radius: 12px 12px 0 0;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .header h1 { font-size: 1.4em; }
+    .main-content { background: white; border-radius: 0 0 12px 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); padding: 25px; }
+    .stats-row { display: flex; gap: 12px; margin-bottom: 24px; }
+    .stat-pill { flex: 1; padding: 14px; border-radius: 10px; text-align: center; background: #f3e5f5; border: 1px solid #e1bee7; }
+    .stat-pill .value { font-size: 1.6em; font-weight: 700; color: #4A148C; }
+    .stat-pill .label { font-size: 0.8em; color: #666; }
+    .portfolio-card {
+      border: 1px solid #e0e0e0; border-radius: 12px; padding: 20px; margin-bottom: 16px;
+      transition: all 0.2s; border-left: 5px solid #4A148C;
+    }
+    .portfolio-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+    .portfolio-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+    .portfolio-name { font-size: 1.1em; font-weight: 700; color: #4A148C; }
+    .portfolio-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .metric { text-align: center; }
+    .metric-value { font-size: 1.2em; font-weight: 700; }
+    .metric-label { font-size: 0.75em; color: #888; }
+    .badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.78em; font-weight: 600; }
+    .badge-bulk { background: #1B5E20; color: white; }
+    .badge-strong { background: #2E7D32; color: white; }
+    .badge-local { background: #558B2F; color: white; }
+    .badge-mixed { background: #F57F17; color: white; }
+    .badge-nobundle { background: #BF360C; color: white; }
+    .btn { padding: 8px 18px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.85em; }
+    .btn-primary { background: #4A148C; color: white; }
+    .btn-primary:hover { background: #6A1B9A; }
+    .empty { text-align: center; padding: 40px; color: #999; }
+    .section-title { font-size: 1.1em; font-weight: 700; color: #4A148C; margin: 24px 0 12px; border-bottom: 2px solid #f3e5f5; padding-bottom: 6px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Portfolio Builder</h1>
+      <button class="btn btn-primary" onclick="rebuildPortfolios()">Rebuild Portfolios</button>
+    </div>
+    <div class="main-content">
+      <div class="stats-row" id="stats-row">
+        <div class="stat-pill"><div class="value" id="stat-total">0</div><div class="label">Portfolios</div></div>
+        <div class="stat-pill"><div class="value" id="stat-bulk">0</div><div class="label">Bulk Ready</div></div>
+        <div class="stat-pill"><div class="value" id="stat-deals">0</div><div class="label">Total Deals</div></div>
+        <div class="stat-pill"><div class="value" id="stat-value">$0</div><div class="label">Total Value</div></div>
+      </div>
+
+      <div class="section-title">Portfolio Groups</div>
+      <div id="portfolio-list"><div class="empty">Loading portfolios...</div></div>
+    </div>
+  </div>
+
+  <script>
+    function loadPortfolios() {
+      google.script.run.withSuccessHandler(function(groups) {
+        if (!groups || groups.length === 0) {
+          document.getElementById('portfolio-list').innerHTML = '<div class="empty">No portfolio groups yet. Run the portfolio builder to auto-detect grouping opportunities.</div>';
+          return;
+        }
+
+        let totalDeals = 0, totalValue = 0, bulkReady = 0;
+        groups.forEach(g => {
+          totalDeals += g['Deal Count'] || 0;
+          totalValue += parseFloat(g['Total Estimated Portfolio Cost']) || 0;
+          if (g['Bulk Buyer Fit'] === 'BULK READY') bulkReady++;
+        });
+
+        document.getElementById('stat-total').textContent = groups.length;
+        document.getElementById('stat-bulk').textContent = bulkReady;
+        document.getElementById('stat-deals').textContent = totalDeals;
+        document.getElementById('stat-value').textContent = '$' + (totalValue / 1000).toFixed(0) + 'K';
+
+        let html = '';
+        groups.forEach(g => {
+          const appeal = g['Bulk Buyer Fit'] || 'MIXED QUALITY';
+          const badgeClass = appeal === 'BULK READY' ? 'badge-bulk' :
+            appeal === 'STRONG PORTFOLIO' ? 'badge-strong' :
+            appeal === 'LOCAL PACKAGE' ? 'badge-local' :
+            appeal === 'MIXED QUALITY' ? 'badge-mixed' : 'badge-nobundle';
+
+          html += '<div class="portfolio-card">' +
+            '<div class="portfolio-header"><div>' +
+            '<div class="portfolio-name">' + (g['Portfolio Name'] || g['Portfolio Group ID']) + '</div>' +
+            '<div style="color:#666;font-size:0.85em">' + (g['City'] || '') + ', ' + (g['State'] || '') + ' | ' + (g['ZIP Cluster'] || '') + '</div>' +
+            '</div><span class="badge ' + badgeClass + '">' + appeal + '</span></div>' +
+            '<div class="portfolio-metrics">' +
+            '<div class="metric"><div class="metric-value">' + (g['Deal Count'] || 0) + '</div><div class="metric-label">Deals</div></div>' +
+            '<div class="metric"><div class="metric-value">$' + ((parseFloat(g['Average Asking Price']) || 0) / 1000).toFixed(0) + 'K</div><div class="metric-label">Avg Price</div></div>' +
+            '<div class="metric"><div class="metric-value">' + ((parseFloat(g['Average Cap Rate']) || 0) * 100).toFixed(1) + '%</div><div class="metric-label">Avg Cap Rate</div></div>' +
+            '<div class="metric"><div class="metric-value">' + (g['Institutional Appeal Score'] || 0) + '</div><div class="metric-label">Appeal Score</div></div>' +
+            '</div>' +
+            '<div style="margin-top:10px;font-size:0.85em;color:#888">Strategy: ' + (g['Strategy Mix'] || 'Mixed') + ' | Risk: ' + (g['Portfolio Risk Rating'] || 'N/A') + ' | Geo: ' + (g['Geographic Consistency'] || 'N/A') + '</div>' +
+            '</div>';
+        });
+
+        document.getElementById('portfolio-list').innerHTML = html;
+      }).getPortfolioGroups();
+    }
+
+    function rebuildPortfolios() {
+      document.getElementById('portfolio-list').innerHTML = '<div class="empty">Rebuilding portfolios...</div>';
+      google.script.run.withSuccessHandler(function() {
+        loadPortfolios();
+      }).updatePortfolioBuilder();
+    }
+
+    loadPortfolios();
+  </script>
+</body>
+</html>

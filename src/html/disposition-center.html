@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f7fa; padding: 20px; }
+    .container { max-width: 1000px; margin: 0 auto; }
+    .header {
+      background: linear-gradient(135deg, #BF360C 0%, #E65100 100%);
+      color: white; padding: 20px 30px; border-radius: 12px 12px 0 0;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .header h1 { font-size: 1.4em; }
+    .main-content { background: white; border-radius: 0 0 12px 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); padding: 25px; }
+    .stats-row { display: flex; gap: 12px; margin-bottom: 24px; }
+    .stat-pill { flex: 1; padding: 14px; border-radius: 10px; text-align: center; background: #f8f9fa; border: 1px solid #e0e0e0; }
+    .stat-pill .value { font-size: 1.6em; font-weight: 700; }
+    .stat-pill .label { font-size: 0.8em; color: #666; }
+    .tabs { display: flex; border-bottom: 2px solid #e0e0e0; margin-bottom: 20px; }
+    .tab { padding: 10px 20px; cursor: pointer; border-bottom: 3px solid transparent; font-weight: 500; font-size: 0.9em; }
+    .tab:hover { background: #f5f5f5; }
+    .tab.active { border-bottom-color: #BF360C; color: #BF360C; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .dispo-card {
+      border: 1px solid #e0e0e0; border-radius: 10px; padding: 16px; margin-bottom: 12px; transition: all 0.2s;
+    }
+    .dispo-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .dispo-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+    .dispo-address { font-weight: 700; font-size: 1em; }
+    .dispo-buyer { color: #666; font-size: 0.9em; }
+    .dispo-meta { display: flex; gap: 10px; flex-wrap: wrap; }
+    .dispo-actions { display: flex; gap: 8px; margin-top: 10px; }
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.75em; font-weight: 600; }
+    .badge-sent { background: #BBDEFB; color: #0D47A1; }
+    .badge-interested { background: #C8E6C9; color: #1B5E20; }
+    .badge-passed { background: #FFCDD2; color: #B71C1C; }
+    .badge-negotiating { background: #FFE0B2; color: #E65100; }
+    .badge-closed { background: #1B5E20; color: white; }
+    .badge-nocontact { background: #E0E0E0; color: #666; }
+    .btn { padding: 7px 16px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.8em; transition: all 0.2s; }
+    .btn-send { background: #0D47A1; color: white; }
+    .btn-followup { background: #FF9800; color: white; }
+    .btn-interested { background: #1B5E20; color: white; }
+    .btn-passed { background: #B71C1C; color: white; }
+    .btn-close { background: #4A148C; color: white; }
+    .btn:hover { transform: translateY(-1px); }
+    .empty { text-align: center; padding: 40px; color: #999; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Disposition Action Center</h1>
+      <button class="btn btn-send" onclick="createEntries()">Create New Entries</button>
+    </div>
+    <div class="main-content">
+      <div class="stats-row" id="stats-row">
+        <div class="stat-pill"><div class="value" id="stat-total">0</div><div class="label">Total</div></div>
+        <div class="stat-pill"><div class="value" style="color:#0D47A1" id="stat-sent">0</div><div class="label">Sent</div></div>
+        <div class="stat-pill"><div class="value" style="color:#1B5E20" id="stat-interested">0</div><div class="label">Interested</div></div>
+        <div class="stat-pill"><div class="value" style="color:#E65100" id="stat-negotiating">0</div><div class="label">Negotiating</div></div>
+        <div class="stat-pill"><div class="value" style="color:#1B5E20" id="stat-closed">0</div><div class="label">Closed</div></div>
+        <div class="stat-pill"><div class="value" style="color:#B71C1C" id="stat-followups">0</div><div class="label">Follow-Ups Due</div></div>
+      </div>
+
+      <div class="tabs">
+        <div class="tab active" onclick="showTab('pending')">Pending Action</div>
+        <div class="tab" onclick="showTab('sent')">Sent / Awaiting</div>
+        <div class="tab" onclick="showTab('active')">Active / Interested</div>
+        <div class="tab" onclick="showTab('closed')">Closed / Passed</div>
+      </div>
+
+      <div class="tab-content active" id="tab-pending"><div class="empty">Loading...</div></div>
+      <div class="tab-content" id="tab-sent"><div class="empty">Loading...</div></div>
+      <div class="tab-content" id="tab-active"><div class="empty">Loading...</div></div>
+      <div class="tab-content" id="tab-closed"><div class="empty">Loading...</div></div>
+    </div>
+  </div>
+
+  <script>
+    let allDispositions = [];
+
+    function showTab(tabName) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      event.target.classList.add('active');
+      document.getElementById('tab-' + tabName).classList.add('active');
+    }
+
+    function loadData() {
+      google.script.run.withSuccessHandler(function(stats) {
+        document.getElementById('stat-total').textContent = stats.total;
+        document.getElementById('stat-sent').textContent = stats.sent;
+        document.getElementById('stat-interested').textContent = stats.interested;
+        document.getElementById('stat-negotiating').textContent = stats.negotiating;
+        document.getElementById('stat-closed').textContent = stats.closed;
+        document.getElementById('stat-followups').textContent = stats.followUpsDue;
+      }).getDispositionStatistics();
+
+      google.script.run.withSuccessHandler(function(data) {
+        if (!data) return;
+        allDispositions = data;
+        renderDispositions();
+      }).prepareDispositionForCRMExport();
+    }
+
+    function renderDispositions() {
+      const pending = allDispositions.filter(d => !d.closed && d.responseStatus !== 'Interested' && d.crmStage === 'Hot Deal');
+      const sent = allDispositions.filter(d => !d.closed && ['Contacted'].includes(d.crmStage) && d.responseStatus !== 'Interested');
+      const active = allDispositions.filter(d => !d.closed && (d.responseStatus === 'Interested' || d.crmStage === 'Negotiating'));
+      const closed = allDispositions.filter(d => d.closed || d.crmStage === 'Dead' || d.crmStage === 'Sold');
+
+      document.getElementById('tab-pending').innerHTML = renderCards(pending, 'pending');
+      document.getElementById('tab-sent').innerHTML = renderCards(sent, 'sent');
+      document.getElementById('tab-active').innerHTML = renderCards(active, 'active');
+      document.getElementById('tab-closed').innerHTML = renderCards(closed, 'closed');
+    }
+
+    function renderCards(items, type) {
+      if (items.length === 0) return '<div class="empty">No items in this category</div>';
+
+      return items.map(item => {
+        const badgeClass = item.closed ? 'badge-closed' :
+          item.responseStatus === 'Interested' ? 'badge-interested' :
+          item.crmStage === 'Negotiating' ? 'badge-negotiating' :
+          item.crmStage === 'Contacted' ? 'badge-sent' :
+          item.crmStage === 'Dead' ? 'badge-passed' : 'badge-nocontact';
+
+        let actions = '';
+        if (type === 'pending') {
+          actions = '<button class="btn btn-send" onclick="markSent(\'' + item.dealId + '\')">Mark Sent</button>';
+        } else if (type === 'sent') {
+          actions = '<button class="btn btn-followup" onclick="followUp(\'' + item.dealId + '\')">Follow Up</button>' +
+            '<button class="btn btn-interested" onclick="markInterested(\'' + item.dealId + '\')">Interested</button>' +
+            '<button class="btn btn-passed" onclick="markPassed(\'' + item.dealId + '\')">Passed</button>';
+        } else if (type === 'active') {
+          actions = '<button class="btn btn-close" onclick="markClosed(\'' + item.dealId + '\')">Close Deal</button>' +
+            '<button class="btn btn-passed" onclick="markPassed(\'' + item.dealId + '\')">Passed</button>';
+        }
+
+        return '<div class="dispo-card">' +
+          '<div class="dispo-header"><div>' +
+          '<div class="dispo-address">' + (item.address || 'Unknown') + '</div>' +
+          '<div class="dispo-buyer">' + (item.buyerName || '') + ' | ' + (item.buyerType || '') + '</div>' +
+          '</div><span class="badge ' + badgeClass + '">' + (item.crmStage || item.responseStatus) + '</span></div>' +
+          '<div class="dispo-meta">' +
+          (item.email ? '<span style="font-size:0.85em;color:#666">' + item.email + '</span>' : '') +
+          (item.phone ? '<span style="font-size:0.85em;color:#666">' + item.phone + '</span>' : '') +
+          '</div>' +
+          (actions ? '<div class="dispo-actions">' + actions + '</div>' : '') +
+          '</div>';
+      }).join('');
+    }
+
+    function markSent(dealId) { alert('Mark sent: ' + dealId + ' - Use sheet directly for now'); loadData(); }
+    function followUp(dealId) { alert('Follow up on: ' + dealId); }
+    function markInterested(dealId) { alert('Marked interested: ' + dealId); }
+    function markPassed(dealId) { alert('Marked passed: ' + dealId); }
+    function markClosed(dealId) { alert('Closed: ' + dealId); }
+    function createEntries() {
+      google.script.run.withSuccessHandler(function() {
+        alert('Disposition entries created from matches!');
+        loadData();
+      }).createDispositionTrackerEntries();
+    }
+
+    loadData();
+  </script>
+</body>
+</html>

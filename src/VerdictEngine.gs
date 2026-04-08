@@ -73,6 +73,8 @@ function generateVerdictRankings() {
       exitSpeedTier: deal['Exit Speed Tier'] || 'MOD',
       somScore: deal['SOM Score'] || 50,
       slaStatus: deal['SLA Status'] || 'N/A',
+      institutionalGrade: deal['Institutional Grade'] || '',
+      dispositionPriority: deal['Disposition Priority'] || '',
       nextAction: nextAction,
       sellerMessage: (deal['Seller Message'] || '').substring(0, 100),
       actionLink: deal['Listing URL'] || ''
@@ -101,6 +103,8 @@ function generateVerdictRankings() {
     v.exitSpeedTier,
     v.somScore,
     v.slaStatus,
+    v.institutionalGrade,
+    v.dispositionPriority,
     v.nextAction,
     v.sellerMessage,
     v.actionLink ? `=HYPERLINK("${v.actionLink}", "View")` : ''

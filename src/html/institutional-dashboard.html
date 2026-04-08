@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; padding: 20px; color: #333; }
+    .container { max-width: 1200px; margin: 0 auto; }
+    .header {
+      background: linear-gradient(135deg, #0D47A1 0%, #1565C0 50%, #1B5E20 100%);
+      color: white; padding: 24px 30px; border-radius: 14px 14px 0 0;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .header h1 { font-size: 1.6em; letter-spacing: 0.5px; }
+    .header-actions { display: flex; gap: 10px; }
+    .main-content { background: white; border-radius: 0 0 14px 14px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); padding: 30px; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 30px; }
+    .kpi-card {
+      background: linear-gradient(135deg, #f8f9fa, #ffffff);
+      border: 1px solid #e0e0e0; padding: 20px; border-radius: 12px; text-align: center;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .kpi-value { font-size: 2.2em; font-weight: 700; color: #0D47A1; }
+    .kpi-value.green { color: #1B5E20; }
+    .kpi-value.orange { color: #E65100; }
+    .kpi-value.red { color: #B71C1C; }
+    .kpi-label { color: #666; font-size: 0.85em; margin-top: 4px; }
+    .section-title { font-size: 1.15em; font-weight: 700; color: #0D47A1; margin: 28px 0 14px; padding-bottom: 8px; border-bottom: 2px solid #E3F2FD; }
+    .grade-bar { display: flex; gap: 8px; margin-bottom: 20px; }
+    .grade-segment {
+      flex: 1; padding: 12px; border-radius: 8px; text-align: center; color: white; font-weight: 600; font-size: 0.85em;
+    }
+    .grade-count { font-size: 1.8em; font-weight: 700; }
+    .funnel { display: flex; flex-direction: column; gap: 6px; max-width: 500px; }
+    .funnel-row { display: flex; align-items: center; gap: 12px; }
+    .funnel-label { width: 140px; font-size: 0.9em; text-align: right; }
+    .funnel-bar-wrap { flex: 1; background: #f0f0f0; border-radius: 6px; height: 28px; overflow: hidden; }
+    .funnel-bar { height: 100%; border-radius: 6px; display: flex; align-items: center; padding-left: 10px; color: white; font-size: 0.8em; font-weight: 600; min-width: 30px; transition: width 0.5s; }
+    .follow-up-list { max-height: 300px; overflow-y: auto; }
+    .follow-up-item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 12px 16px; border: 1px solid #e0e0e0; border-radius: 8px; margin-bottom: 8px;
+    }
+    .follow-up-item:hover { background: #f8f9fa; }
+    .follow-up-urgent { border-left: 4px solid #B71C1C; }
+    .follow-up-normal { border-left: 4px solid #FF9800; }
+    .btn { padding: 10px 22px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-size: 0.9em; }
+    .btn-primary { background: linear-gradient(135deg, #0D47A1, #1565C0); color: white; }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(13,71,161,0.3); }
+    .btn-success { background: #1B5E20; color: white; }
+    .btn-sm { padding: 6px 14px; font-size: 0.8em; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    .loading { text-align: center; padding: 40px; color: #999; }
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.75em; font-weight: 600; }
+    .badge-green { background: #C8E6C9; color: #1B5E20; }
+    .badge-blue { background: #BBDEFB; color: #0D47A1; }
+    .badge-orange { background: #FFE0B2; color: #E65100; }
+    .badge-red { background: #FFCDD2; color: #B71C1C; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div>
+        <h1>Institutional Disposition Dashboard</h1>
+        <div style="font-size: 0.85em; opacity: 0.8; margin-top: 4px;">Acquisitions & Dispositions Intelligence</div>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-primary" onclick="refreshAll()">Refresh All</button>
+        <button class="btn btn-success" onclick="runWorkflow()">Run Workflow</button>
+      </div>
+    </div>
+    <div class="main-content">
+      <!-- KPI Grid -->
+      <div class="kpi-grid" id="kpi-grid">
+        <div class="kpi-card"><div class="kpi-value" id="kpi-total">--</div><div class="kpi-label">Total Deals</div></div>
+        <div class="kpi-card"><div class="kpi-value green" id="kpi-inst">--</div><div class="kpi-label">Institutional Grade</div></div>
+        <div class="kpi-card"><div class="kpi-value" id="kpi-buyers">--</div><div class="kpi-label">Active Buyers</div></div>
+        <div class="kpi-card"><div class="kpi-value green" id="kpi-closed">--</div><div class="kpi-label">Closed Dispositions</div></div>
+        <div class="kpi-card"><div class="kpi-value" id="kpi-packages">--</div><div class="kpi-label">Packages Ready</div></div>
+        <div class="kpi-card"><div class="kpi-value" id="kpi-matches">--</div><div class="kpi-label">Total Matches</div></div>
+        <div class="kpi-card"><div class="kpi-value" id="kpi-response">--</div><div class="kpi-label">Response Rate</div></div>
+        <div class="kpi-card"><div class="kpi-value orange" id="kpi-followups">--</div><div class="kpi-label">Follow-Ups Due</div></div>
+      </div>
+
+      <!-- Grade Distribution -->
+      <div class="section-title">Institutional Grade Distribution</div>
+      <div class="grade-bar" id="grade-bar">
+        <div class="grade-segment" style="background:#1B5E20"><div class="grade-count" id="grade-prime">0</div>PRIME</div>
+        <div class="grade-segment" style="background:#2E7D32"><div class="grade-count" id="grade-fit">0</div>FIT</div>
+        <div class="grade-segment" style="background:#558B2F"><div class="grade-count" id="grade-local">0</div>LOCAL</div>
+        <div class="grade-segment" style="background:#F57F17"><div class="grade-count" id="grade-portfolio">0</div>PORTFOLIO</div>
+        <div class="grade-segment" style="background:#BF360C"><div class="grade-count" id="grade-not">0</div>NOT INST</div>
+      </div>
+
+      <div class="two-col">
+        <!-- Disposition Funnel -->
+        <div>
+          <div class="section-title">Disposition Response Funnel</div>
+          <div class="funnel" id="funnel">
+            <div class="loading">Loading funnel data...</div>
+          </div>
+        </div>
+
+        <!-- Follow-Up Reminders -->
+        <div>
+          <div class="section-title">Follow-Up Reminders</div>
+          <div class="follow-up-list" id="follow-ups">
+            <div class="loading">Loading reminders...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Portfolio Opportunities -->
+      <div class="section-title">Portfolio Opportunities</div>
+      <div id="portfolio-section">
+        <div class="loading">Loading portfolio data...</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function loadDashboard() {
+      google.script.run
+        .withSuccessHandler(function(data) {
+          if (!data || !data.metrics) return;
+          const m = data.metrics;
+
+          // KPIs
+          document.getElementById('kpi-total').textContent = m.totalDeals || 0;
+          document.getElementById('kpi-inst').textContent = (m.instPrime || 0) + (m.instFit || 0);
+          document.getElementById('kpi-buyers').textContent = m.activeBuyers || 0;
+          document.getElementById('kpi-closed').textContent = m.dispo ? m.dispo.closed : 0;
+          document.getElementById('kpi-packages').textContent = m.packagesReady || 0;
+          document.getElementById('kpi-matches').textContent = m.totalMatches || 0;
+          document.getElementById('kpi-response').textContent = m.dispo ? m.dispo.responseRate + '%' : '0%';
+          document.getElementById('kpi-followups').textContent = m.dispo ? m.dispo.followUpsDue : 0;
+
+          // Grade distribution
+          document.getElementById('grade-prime').textContent = m.instPrime || 0;
+          document.getElementById('grade-fit').textContent = m.instFit || 0;
+          document.getElementById('grade-local').textContent = m.localLandlord || 0;
+          document.getElementById('grade-portfolio').textContent = m.portfolioOnly || 0;
+          document.getElementById('grade-not').textContent = m.notInstitutional || 0;
+
+          // Disposition funnel
+          if (data.charts && data.charts.dispositionFunnel) {
+            const funnel = data.charts.dispositionFunnel;
+            const maxVal = Math.max(...Object.values(funnel), 1);
+            const colors = ['#0D47A1', '#1565C0', '#2E7D32', '#F57F17', '#1B5E20', '#B71C1C'];
+            let html = '';
+            Object.entries(funnel).forEach(([label, val], idx) => {
+              const pct = Math.max(5, (val / maxVal) * 100);
+              html += '<div class="funnel-row"><div class="funnel-label">' + label + '</div>' +
+                '<div class="funnel-bar-wrap"><div class="funnel-bar" style="width:' + pct + '%;background:' + colors[idx % colors.length] + '">' + val + '</div></div></div>';
+            });
+            document.getElementById('funnel').innerHTML = html || '<p style="color:#999">No disposition data yet</p>';
+          }
+
+          // Follow-ups
+          if (data.followUps && data.followUps.length > 0) {
+            let fuHtml = '';
+            data.followUps.forEach(fu => {
+              const urgentClass = fu.daysSinceActivity > 5 ? 'follow-up-urgent' : 'follow-up-normal';
+              fuHtml += '<div class="follow-up-item ' + urgentClass + '"><div>' +
+                '<strong>' + (fu.address || 'Unknown') + '</strong><br>' +
+                '<span style="color:#666;font-size:0.85em">' + fu.buyerName + ' | ' + fu.daysSinceActivity + ' days ago</span>' +
+                '</div><button class="btn btn-sm btn-primary" onclick="recordFollowUp(\'' + fu.dispositionId + '\')">Follow Up</button></div>';
+            });
+            document.getElementById('follow-ups').innerHTML = fuHtml;
+          } else {
+            document.getElementById('follow-ups').innerHTML = '<p style="color:#4CAF50;padding:20px">No follow-ups due. All clear!</p>';
+          }
+
+          // Portfolio section
+          let portHtml = '<div class="kpi-grid" style="grid-template-columns: repeat(3, 1fr)">';
+          portHtml += '<div class="kpi-card"><div class="kpi-value">' + (m.activePortfolios || 0) + '</div><div class="kpi-label">Active Portfolios</div></div>';
+          portHtml += '<div class="kpi-card"><div class="kpi-value green">' + (m.bulkReadyPortfolios || 0) + '</div><div class="kpi-label">Bulk Ready</div></div>';
+          portHtml += '<div class="kpi-card"><div class="kpi-value">$' + ((m.totalPortfolioValue || 0) / 1000).toFixed(0) + 'K</div><div class="kpi-label">Total Portfolio Value</div></div>';
+          portHtml += '</div>';
+          document.getElementById('portfolio-section').innerHTML = portHtml;
+        })
+        .getInstitutionalDashboardData();
+    }
+
+    function refreshAll() {
+      google.script.run.withSuccessHandler(function() {
+        loadDashboard();
+      }).refreshInstitutionalDashboard();
+    }
+
+    function runWorkflow() {
+      if (confirm('Run full institutional disposition workflow? This will score, match, package, and update the dashboard.')) {
+        google.script.run.withSuccessHandler(function() {
+          alert('Workflow complete!');
+          loadDashboard();
+        }).runInstitutionalDispositionWorkflow();
+      }
+    }
+
+    function recordFollowUp(dispoId) {
+      const notes = prompt('Follow-up notes:');
+      if (notes !== null) {
+        google.script.run.withSuccessHandler(function() {
+          loadDashboard();
+        }).recordFollowUp(dispoId, notes);
+      }
+    }
+
+    loadDashboard();
+  </script>
+</body>
+</html>

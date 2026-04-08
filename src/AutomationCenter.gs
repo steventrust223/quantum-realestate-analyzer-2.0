@@ -429,7 +429,18 @@ function getControlCenterData() {
     logStats: getLogStats(),
     slaConfig: getSLAConfig(),
     recentLogs: getRecentLogs(20),
-    recentErrors: getRecentErrors(5, true)
+    recentErrors: getRecentErrors(5, true),
+    institutionalStatus: {
+      screeningEnabled: getSetting('inst_screening_enabled', 'true') === 'true',
+      buyerMatchingEnabled: getSetting('inst_buyer_matching_enabled', 'true') === 'true',
+      autoPackageCreation: getSetting('inst_auto_package_creation', 'true') === 'true',
+      autoPortfolioSuggestion: getSetting('inst_auto_portfolio_suggestion', 'true') === 'true',
+      dispositionReminder: getSetting('inst_disposition_reminder', 'true') === 'true',
+      minCapRate: getSetting('inst_min_cap_rate', '0.06'),
+      maxRehab: getSetting('inst_max_rehab', '40000'),
+      minScore: getSetting('inst_min_score', '60'),
+      minPortfolioSize: getSetting('inst_min_portfolio_size', '3')
+    }
   };
 }
 

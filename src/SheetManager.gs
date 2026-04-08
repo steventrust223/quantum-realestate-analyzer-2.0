@@ -30,8 +30,12 @@ function initializeAllSheets() {
     createCoreSheets(ss);
     createStrategyEngineSheets(ss);
     createOutputSheets(ss);
+    createInstitutionalSheets(ss);
     createAdminSheets(ss);
     createLogSheets(ss);
+
+    // Add institutional columns to Master DB
+    addInstitutionalColumnsToMaster(ss);
 
     // Apply formatting
     applyAllFormatting();
@@ -130,6 +134,49 @@ function createLogSheets(ss) {
 }
 
 /**
+ * Creates all institutional disposition layer sheets
+ */
+function createInstitutionalSheets(ss) {
+  createSheetWithHeaders(ss, CONFIG.SHEETS.INST_BUYERS, CONFIG.COLUMNS.INST_BUYERS);
+  createSheetWithHeaders(ss, CONFIG.SHEETS.INST_BUY_BOX_MATCHER, CONFIG.COLUMNS.INST_BUY_BOX_MATCHER);
+  createSheetWithHeaders(ss, CONFIG.SHEETS.INST_DEAL_PACKAGE, CONFIG.COLUMNS.INST_DEAL_PACKAGE);
+  createSheetWithHeaders(ss, CONFIG.SHEETS.INST_PORTFOLIO_BUILDER, CONFIG.COLUMNS.INST_PORTFOLIO_BUILDER);
+  createSheetWithHeaders(ss, CONFIG.SHEETS.INST_DISPOSITION_TRACKER, CONFIG.COLUMNS.INST_DISPOSITION_TRACKER);
+  createSheetWithHeaders(ss, CONFIG.SHEETS.INST_DASHBOARD, [
+    'Section', 'Metric', 'Value', 'Detail', 'Last Updated'
+  ]);
+
+  // Apply institutional data validations
+  applyInstitutionalValidations(ss);
+
+  logEvent('INST', 'Institutional sheets created');
+}
+
+/**
+ * Adds institutional columns to the Master Database if not present
+ */
+function addInstitutionalColumnsToMaster(ss) {
+  const sheet = ss.getSheetByName(CONFIG.SHEETS.MASTER_DB);
+  if (!sheet) return;
+
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const newCols = CONFIG.COLUMNS.MASTER_DB_INSTITUTIONAL;
+  let colsAdded = 0;
+
+  newCols.forEach(colName => {
+    if (!headers.includes(colName)) {
+      const nextCol = sheet.getLastColumn() + 1;
+      sheet.getRange(1, nextCol).setValue(colName);
+      colsAdded++;
+    }
+  });
+
+  if (colsAdded > 0) {
+    logEvent('INST', `Added ${colsAdded} institutional columns to Master DB`);
+  }
+}
+
+/**
  * Creates a sheet with headers if it doesn't exist
  * @param {Spreadsheet} ss - Spreadsheet object
  * @param {string} sheetName - Name of the sheet
@@ -154,6 +201,47 @@ function createSheetWithHeaders(ss, sheetName, headers) {
 // ============================================================
 // FORMATTING
 // ============================================================
+
+/**
+ * Formats an institutional sheet with premium styling
+ */
+function formatInstitutionalSheet(ss, sheetName, headerColor) {
+  const sheet = ss.getSheetByName(sheetName);
+  if (!sheet) return;
+
+  const lastCol = sheet.getLastColumn() || 10;
+  headerColor = headerColor || '#0D47A1';
+
+  sheet.setFrozenRows(1);
+  sheet.setFrozenColumns(Math.min(3, lastCol));
+
+  const headerRange = sheet.getRange(1, 1, 1, lastCol);
+  headerRange.setBackground(headerColor)
+    .setFontColor('#ffffff')
+    .setFontWeight('bold')
+    .setFontSize(10)
+    .setHorizontalAlignment('center')
+    .setVerticalAlignment('middle')
+    .setWrap(true);
+
+  sheet.setRowHeight(1, 42);
+
+  for (let i = 1; i <= lastCol; i++) {
+    sheet.autoResizeColumn(i);
+    const width = sheet.getColumnWidth(i);
+    if (width > 200) sheet.setColumnWidth(i, 200);
+    else if (width < 80) sheet.setColumnWidth(i, 80);
+  }
+
+  applyAlternatingColors(sheet, '#E3F2FD', '#ffffff');
+
+  if (sheet.getLastRow() > 0) {
+    const dataRange = sheet.getDataRange();
+    if (!sheet.getFilter()) {
+      dataRange.createFilter();
+    }
+  }
+}
 
 /**
  * Apply formatting to all sheets
@@ -184,9 +272,18 @@ function applyAllFormatting() {
 
   formatDashboardSheet(ss, CONFIG.SHEETS.DASHBOARD);
 
+  // Institutional sheets
+  formatInstitutionalSheet(ss, CONFIG.SHEETS.INST_BUYERS, '#0D47A1');
+  formatInstitutionalSheet(ss, CONFIG.SHEETS.INST_BUY_BOX_MATCHER, '#1565C0');
+  formatInstitutionalSheet(ss, CONFIG.SHEETS.INST_DEAL_PACKAGE, '#1B5E20');
+  formatInstitutionalSheet(ss, CONFIG.SHEETS.INST_PORTFOLIO_BUILDER, '#4A148C');
+  formatInstitutionalSheet(ss, CONFIG.SHEETS.INST_DISPOSITION_TRACKER, '#BF360C');
+  formatDashboardSheet(ss, CONFIG.SHEETS.INST_DASHBOARD);
+
   // Apply conditional formatting to key sheets
   applyVerdictConditionalFormatting(ss);
   applyScoreConditionalFormatting(ss);
+  applyInstitutionalConditionalFormatting(ss);
 
   logEvent('FORMAT', 'All formatting applied');
 }
@@ -756,7 +853,19 @@ function initializeSettingsSheet() {
     ['auto_nightly_refresh', 'true', 'boolean', 'Enable nightly refresh job', new Date()],
     ['auto_dashboard_update', 'true', 'boolean', 'Enable hourly dashboard update', new Date()],
     ['auto_stl_check', 'true', 'boolean', 'Enable speed-to-lead checks', new Date()],
-    ['auto_crm_sync', 'false', 'boolean', 'Enable automatic CRM sync', new Date()]
+    ['auto_crm_sync', 'false', 'boolean', 'Enable automatic CRM sync', new Date()],
+
+    // Institutional Disposition Settings
+    ['inst_screening_enabled', 'true', 'boolean', 'Enable institutional screening on pipeline run', new Date()],
+    ['inst_buyer_matching_enabled', 'true', 'boolean', 'Enable automatic buyer matching', new Date()],
+    ['inst_auto_package_creation', 'true', 'boolean', 'Auto-create packages for qualifying deals', new Date()],
+    ['inst_auto_portfolio_suggestion', 'true', 'boolean', 'Auto-suggest portfolio groupings', new Date()],
+    ['inst_disposition_reminder', 'true', 'boolean', 'Enable disposition follow-up reminders', new Date()],
+    ['inst_min_cap_rate', '0.06', 'number', 'Minimum cap rate for institutional grade', new Date()],
+    ['inst_max_rehab', '40000', 'number', 'Maximum rehab for institutional grade', new Date()],
+    ['inst_min_score', '60', 'number', 'Minimum institutional score threshold', new Date()],
+    ['inst_min_portfolio_size', '3', 'number', 'Minimum deals to form a portfolio', new Date()],
+    ['inst_default_outreach_priority', 'NORMAL', 'string', 'Default outreach priority level', new Date()]
   ];
 
   sheet.getRange(2, 1, defaults.length, 5).setValues(defaults);
@@ -797,4 +906,319 @@ function getColumnMap(sheet) {
     }
   });
   return map;
+}
+
+// ============================================================
+// INSTITUTIONAL DATA VALIDATIONS
+// ============================================================
+
+/**
+ * Applies data validations to institutional sheets
+ */
+function applyInstitutionalValidations(ss) {
+  applyInstitutionalBuyerValidations(ss);
+  applyBuyBoxMatcherValidations(ss);
+  applyDispositionTrackerValidations(ss);
+  applyDealPackageValidations(ss);
+}
+
+function applyInstitutionalBuyerValidations(ss) {
+  const sheet = ss.getSheetByName(CONFIG.SHEETS.INST_BUYERS);
+  if (!sheet) return;
+
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const maxRow = 500;
+
+  const dropdowns = {
+    'Buyer Type': ['Hedge Fund', 'Institutional Landlord', 'Portfolio Rental Buyer', 'Build-to-Rent',
+      'REIT', 'Private Equity', 'Local Private Landlord', 'Bulk Package Buyer', 'Family Office', 'Other'],
+    'Asset Type': ['SFR', 'Duplex', 'Triplex', 'Fourplex', 'Multi-Family', 'Condo', 'Townhouse', 'Mixed', 'Any'],
+    'Preferred Strategy': ['LTR', 'STR', 'MTR', 'Flip', 'Creative', 'Build-to-Rent', 'Value-Add', 'Turnkey', 'Any'],
+    'Condition Preference': ['Turnkey', 'Light Rehab', 'Moderate Rehab', 'Heavy Rehab', 'Any'],
+    'Occupancy Preference': ['Tenant Occupied', 'Vacant', 'Either'],
+    'Preferred Neighborhood Grade': ['A', 'B', 'C', 'D', 'A-B', 'B-C', 'Any'],
+    'Landlord Friendly Only?': ['Yes', 'No'],
+    'Wants Tenant Occupied?': ['Yes', 'No', 'Either'],
+    'Wants Vacant?': ['Yes', 'No', 'Either'],
+    'Bulk Buyer?': ['Yes', 'No'],
+    'Preferred Deal Class': ['Institutional Prime', 'Institutional Fit', 'Local Landlord Fit', 'Any'],
+    'Accepts Off-Market?': ['Yes', 'No'],
+    'Accepts Assigned Contracts?': ['Yes', 'No'],
+    'Cash Buyer?': ['Yes', 'No', 'Flexible'],
+    'Proof of Funds On File?': ['Yes', 'No', 'Pending'],
+    'Warmth Status': ['Hot', 'Warm', 'Cool', 'Cold', 'New'],
+    'Buyer Status': ['Active', 'Paused', 'Inactive', 'Blacklisted'],
+    'Buyer Reliability Tier': ['PLATINUM', 'GOLD', 'SILVER', 'BRONZE', 'NEW']
+  };
+
+  Object.entries(dropdowns).forEach(([header, values]) => {
+    const col = headers.indexOf(header) + 1;
+    if (col > 0) {
+      const range = sheet.getRange(2, col, maxRow, 1);
+      range.setDataValidation(SpreadsheetApp.newDataValidation()
+        .requireValueInList(values, true)
+        .setAllowInvalid(false)
+        .build());
+    }
+  });
+}
+
+function applyBuyBoxMatcherValidations(ss) {
+  const sheet = ss.getSheetByName(CONFIG.SHEETS.INST_BUY_BOX_MATCHER);
+  if (!sheet) return;
+
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const maxRow = 500;
+
+  const dropdowns = {
+    'Disposition Priority': ['SEND NOW', 'HOLD FOR PORTFOLIO', 'LOCAL LANDLORD FIRST', 'REVIEW MANUALLY', 'NOT A FIT'],
+    'Recommended Buyer Action': ['SEND NOW', 'REVIEW MANUALLY', 'HOLD FOR PORTFOLIO', 'NOT A FIT'],
+    'Ready to Send?': ['Yes', 'No', 'Pending Review'],
+    'Sent?': ['Yes', 'No'],
+    'Response Status': ['Not Sent', 'Sent - Awaiting', 'Interested', 'Passed', 'Negotiating', 'Closed', 'No Response']
+  };
+
+  Object.entries(dropdowns).forEach(([header, values]) => {
+    const col = headers.indexOf(header) + 1;
+    if (col > 0) {
+      const range = sheet.getRange(2, col, maxRow, 1);
+      range.setDataValidation(SpreadsheetApp.newDataValidation()
+        .requireValueInList(values, true)
+        .setAllowInvalid(false)
+        .build());
+    }
+  });
+}
+
+function applyDispositionTrackerValidations(ss) {
+  const sheet = ss.getSheetByName(CONFIG.SHEETS.INST_DISPOSITION_TRACKER);
+  if (!sheet) return;
+
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const maxRow = 500;
+
+  const dropdowns = {
+    'Disposition Tier': ['Tier 1 - Priority', 'Tier 2 - Standard', 'Tier 3 - Bulk', 'Tier 4 - Local Only'],
+    'Response Status': ['No Contact', 'Sent - Awaiting', 'Responded', 'Interested', 'Passed', 'No Response'],
+    'Interest Level': ['Very Interested', 'Interested', 'Maybe', 'Low Interest', 'Not Interested'],
+    'Negotiation Status': ['Not Started', 'Terms Discussed', 'LOI Sent', 'LOI Received', 'Counter Active', 'Agreed', 'Dead'],
+    'Closed?': ['Yes', 'No'],
+    'Matched By System?': ['Yes', 'No'],
+    'Sent Package?': ['Yes', 'No']
+  };
+
+  Object.entries(dropdowns).forEach(([header, values]) => {
+    const col = headers.indexOf(header) + 1;
+    if (col > 0) {
+      const range = sheet.getRange(2, col, maxRow, 1);
+      range.setDataValidation(SpreadsheetApp.newDataValidation()
+        .requireValueInList(values, true)
+        .setAllowInvalid(false)
+        .build());
+    }
+  });
+}
+
+function applyDealPackageValidations(ss) {
+  const sheet = ss.getSheetByName(CONFIG.SHEETS.INST_DEAL_PACKAGE);
+  if (!sheet) return;
+
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const maxRow = 500;
+
+  const dropdowns = {
+    'Package Ready?': ['Yes', 'No', 'Incomplete'],
+    'Disposition Status': ['Draft', 'Ready', 'Sent', 'In Review', 'Under Negotiation', 'Closed', 'Withdrawn'],
+    'Portfolio Eligible': ['Yes', 'No'],
+    'Risk Rating': ['Low', 'Moderate', 'High', 'Critical']
+  };
+
+  Object.entries(dropdowns).forEach(([header, values]) => {
+    const col = headers.indexOf(header) + 1;
+    if (col > 0) {
+      const range = sheet.getRange(2, col, maxRow, 1);
+      range.setDataValidation(SpreadsheetApp.newDataValidation()
+        .requireValueInList(values, true)
+        .setAllowInvalid(false)
+        .build());
+    }
+  });
+}
+
+// ============================================================
+// INSTITUTIONAL CONDITIONAL FORMATTING
+// ============================================================
+
+/**
+ * Applies conditional formatting to institutional sheets
+ */
+function applyInstitutionalConditionalFormatting(ss) {
+  // Institutional Buyers - warmth and status
+  applyInstBuyerConditionalFormatting_(ss);
+  // Buy Box Matcher - match scores and disposition priority
+  applyBuyBoxMatcherConditionalFormatting_(ss);
+  // Disposition Tracker - response and negotiation status
+  applyDispositionConditionalFormatting_(ss);
+  // Master DB institutional columns
+  applyMasterInstitutionalFormatting_(ss);
+}
+
+function applyInstBuyerConditionalFormatting_(ss) {
+  const sheet = ss.getSheetByName(CONFIG.SHEETS.INST_BUYERS);
+  if (!sheet) return;
+
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const rules = [];
+  const lastRow = Math.max(sheet.getLastRow(), 100);
+
+  // Warmth Status coloring
+  const warmthCol = headers.indexOf('Warmth Status') + 1;
+  if (warmthCol > 0) {
+    const range = sheet.getRange(2, warmthCol, lastRow, 1);
+    rules.push(SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('Hot').setBackground('#C8E6C9').setBold(true).setRanges([range]).build());
+    rules.push(SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('Warm').setBackground('#FFF9C4').setRanges([range]).build());
+    rules.push(SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('Cool').setBackground('#BBDEFB').setRanges([range]).build());
+    rules.push(SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('Cold').setBackground('#FFCDD2').setRanges([range]).build());
+  }
+
+  // Buyer Status coloring
+  const statusCol = headers.indexOf('Buyer Status') + 1;
+  if (statusCol > 0) {
+    const range = sheet.getRange(2, statusCol, lastRow, 1);
+    rules.push(SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('Active').setBackground('#C8E6C9').setRanges([range]).build());
+    rules.push(SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('Paused').setBackground('#FFE0B2').setRanges([range]).build());
+    rules.push(SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('Inactive').setBackground('#E0E0E0').setRanges([range]).build());
+    rules.push(SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('Blacklisted').setBackground('#FFCDD2').setBold(true).setRanges([range]).build());
+  }
+
+  // Bulk Buyer highlight
+  const bulkCol = headers.indexOf('Bulk Buyer?') + 1;
+  if (bulkCol > 0) {
+    const range = sheet.getRange(2, bulkCol, lastRow, 1);
+    rules.push(SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('Yes').setBackground('#E8EAF6').setBold(true).setRanges([range]).build());
+  }
+
+  // Reliability Tier
+  const reliCol = headers.indexOf('Buyer Reliability Tier') + 1;
+  if (reliCol > 0) {
+    const range = sheet.getRange(2, reliCol, lastRow, 1);
+    rules.push(SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('PLATINUM').setBackground('#B2DFDB').setBold(true).setRanges([range]).build());
+    rules.push(SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('GOLD').setBackground('#FFF9C4').setBold(true).setRanges([range]).build());
+    rules.push(SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('SILVER').setBackground('#E0E0E0').setRanges([range]).build());
+    rules.push(SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('BRONZE').setBackground('#FFCCBC').setRanges([range]).build());
+  }
+
+  if (rules.length > 0) sheet.setConditionalFormatRules(rules);
+}
+
+function applyBuyBoxMatcherConditionalFormatting_(ss) {
+  const sheet = ss.getSheetByName(CONFIG.SHEETS.INST_BUY_BOX_MATCHER);
+  if (!sheet) return;
+
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const rules = [];
+  const lastRow = Math.max(sheet.getLastRow(), 100);
+
+  // Match Score gradient
+  const matchScoreCol = headers.indexOf('Buy Box Match Score') + 1;
+  if (matchScoreCol > 0) {
+    const range = sheet.getRange(2, matchScoreCol, lastRow, 1);
+    rules.push(SpreadsheetApp.newConditionalFormatRule().whenNumberGreaterThanOrEqualTo(80).setBackground('#C8E6C9').setBold(true).setRanges([range]).build());
+    rules.push(SpreadsheetApp.newConditionalFormatRule().whenNumberBetween(60, 79).setBackground('#BBDEFB').setRanges([range]).build());
+    rules.push(SpreadsheetApp.newConditionalFormatRule().whenNumberBetween(40, 59).setBackground('#FFE0B2').setRanges([range]).build());
+    rules.push(SpreadsheetApp.newConditionalFormatRule().whenNumberLessThan(40).setBackground('#FFCDD2').setRanges([range]).build());
+  }
+
+  // Disposition Priority
+  const dispCol = headers.indexOf('Disposition Priority') + 1;
+  if (dispCol > 0) {
+    const range = sheet.getRange(2, dispCol, lastRow, 1);
+    rules.push(SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('SEND NOW').setBackground('#C8E6C9').setBold(true).setRanges([range]).build());
+    rules.push(SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('HOLD FOR PORTFOLIO').setBackground('#E8EAF6').setRanges([range]).build());
+    rules.push(SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('LOCAL LANDLORD FIRST').setBackground('#FFF9C4').setRanges([range]).build());
+    rules.push(SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('REVIEW MANUALLY').setBackground('#FFE0B2').setRanges([range]).build());
+    rules.push(SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('NOT A FIT').setBackground('#FFCDD2').setRanges([range]).build());
+  }
+
+  if (rules.length > 0) sheet.setConditionalFormatRules(rules);
+}
+
+function applyDispositionConditionalFormatting_(ss) {
+  const sheet = ss.getSheetByName(CONFIG.SHEETS.INST_DISPOSITION_TRACKER);
+  if (!sheet) return;
+
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const rules = [];
+  const lastRow = Math.max(sheet.getLastRow(), 100);
+
+  // Response Status
+  const respCol = headers.indexOf('Response Status') + 1;
+  if (respCol > 0) {
+    const range = sheet.getRange(2, respCol, lastRow, 1);
+    rules.push(SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('Interested').setBackground('#C8E6C9').setBold(true).setRanges([range]).build());
+    rules.push(SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('Responded').setBackground('#BBDEFB').setRanges([range]).build());
+    rules.push(SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('Sent - Awaiting').setBackground('#FFF9C4').setRanges([range]).build());
+    rules.push(SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('Passed').setBackground('#FFCDD2').setRanges([range]).build());
+    rules.push(SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('No Contact').setBackground('#E0E0E0').setRanges([range]).build());
+  }
+
+  // Closed deals
+  const closedCol = headers.indexOf('Closed?') + 1;
+  if (closedCol > 0) {
+    const range = sheet.getRange(2, closedCol, lastRow, 1);
+    rules.push(SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('Yes').setBackground('#C8E6C9').setBold(true).setRanges([range]).build());
+  }
+
+  // Negotiation Status
+  const negoCol = headers.indexOf('Negotiation Status') + 1;
+  if (negoCol > 0) {
+    const range = sheet.getRange(2, negoCol, lastRow, 1);
+    rules.push(SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('Agreed').setBackground('#C8E6C9').setBold(true).setRanges([range]).build());
+    rules.push(SpreadsheetApp.newConditionalFormatRule().whenTextContains('Counter').setBackground('#FFE0B2').setRanges([range]).build());
+    rules.push(SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('Dead').setBackground('#FFCDD2').setRanges([range]).build());
+  }
+
+  if (rules.length > 0) sheet.setConditionalFormatRules(rules);
+}
+
+function applyMasterInstitutionalFormatting_(ss) {
+  const sheet = ss.getSheetByName(CONFIG.SHEETS.MASTER_DB);
+  if (!sheet) return;
+
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const existingRules = sheet.getConditionalFormatRules();
+  const rules = [];
+  const lastRow = Math.max(sheet.getLastRow(), 100);
+
+  // Institutional Grade coloring
+  const gradeCol = headers.indexOf('Institutional Grade') + 1;
+  if (gradeCol > 0) {
+    const range = sheet.getRange(2, gradeCol, lastRow, 1);
+    rules.push(SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('INSTITUTIONAL PRIME').setBackground('#1B5E20').setFontColor('#ffffff').setBold(true).setRanges([range]).build());
+    rules.push(SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('INSTITUTIONAL FIT').setBackground('#2E7D32').setFontColor('#ffffff').setBold(true).setRanges([range]).build());
+    rules.push(SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('LOCAL LANDLORD FIT').setBackground('#558B2F').setFontColor('#ffffff').setRanges([range]).build());
+    rules.push(SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('PORTFOLIO ONLY').setBackground('#F57F17').setFontColor('#ffffff').setRanges([range]).build());
+    rules.push(SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('NOT INSTITUTIONAL').setBackground('#FFCDD2').setRanges([range]).build());
+  }
+
+  // Disposition Priority
+  const dispCol = headers.indexOf('Disposition Priority') + 1;
+  if (dispCol > 0) {
+    const range = sheet.getRange(2, dispCol, lastRow, 1);
+    rules.push(SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('SEND NOW').setBackground('#C8E6C9').setBold(true).setRanges([range]).build());
+    rules.push(SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('HOLD FOR PORTFOLIO').setBackground('#E8EAF6').setRanges([range]).build());
+    rules.push(SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('NOT A FIT').setBackground('#FFCDD2').setRanges([range]).build());
+  }
+
+  // Package Ready
+  const pkgCol = headers.indexOf('Package Ready?') + 1;
+  if (pkgCol > 0) {
+    const range = sheet.getRange(2, pkgCol, lastRow, 1);
+    rules.push(SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('Yes').setBackground('#C8E6C9').setBold(true).setRanges([range]).build());
+    rules.push(SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('No').setBackground('#FFCDD2').setRanges([range]).build());
+  }
+
+  if (rules.length > 0) {
+    sheet.setConditionalFormatRules([...existingRules, ...rules]);
+  }
 }

@@ -69,6 +69,20 @@ function createCustomMenu() {
       .addItem('Process Speed-to-Lead Queue', 'processSpeedToLeadQueue')
       .addItem('Run SLA Escalations', 'runSLAEscalations'))
     .addSeparator()
+    // Institutional Disposition Layer
+    .addSubMenu(ui.createMenu('Institutional Disposition')
+      .addItem('Run Full Institutional Workflow', 'runInstitutionalDispositionWorkflow')
+      .addSeparator()
+      .addItem('Score Institutional Grades', 'calculateInstitutionalScores')
+      .addItem('Run Buyer Buy Box Matching', 'generateBuyerMatches')
+      .addItem('Build Deal Packages', 'buildInstitutionalPackages')
+      .addItem('Update Portfolio Builder', 'updatePortfolioBuilder')
+      .addItem('Create Disposition Entries', 'createDispositionTrackerEntries')
+      .addItem('Update Buyer Relationship Metrics', 'updateBuyerRelationshipMetrics')
+      .addSeparator()
+      .addItem('Refresh Institutional Dashboard', 'refreshInstitutionalDashboard')
+      .addItem('Sync Dispositions to CompanyHub', 'syncDispositionsToCompanyHub'))
+    .addSeparator()
     .addItem('Refresh Dashboard', 'refreshDashboard')
     .addSeparator()
     .addSubMenu(ui.createMenu('HTML Interfaces')
@@ -77,6 +91,11 @@ function createCustomMenu() {
       .addItem('Open Deal Analyzer', 'openDealAnalyzer')
       .addItem('Open Offer Generator', 'openOfferGenerator')
       .addItem('Open Buyer Matcher', 'openBuyerMatcher')
+      .addSeparator()
+      .addItem('Open Institutional Dashboard', 'openInstitutionalDashboard')
+      .addItem('Open Disposition Center', 'openDispositionCenter')
+      .addItem('Open Portfolio Viewer', 'openPortfolioViewer')
+      .addSeparator()
       .addItem('Open Help / SOP', 'openHelpSOP'))
     .addSubMenu(ui.createMenu('Settings & Admin')
       .addItem('Initialize All Sheets', 'initializeAllSheets')
@@ -148,6 +167,39 @@ function openBuyerMatcher() {
 }
 
 /**
+ * Opens the Institutional Dashboard HTML interface
+ */
+function openInstitutionalDashboard() {
+  const html = HtmlService.createHtmlOutputFromFile('institutional-dashboard')
+    .setWidth(1200)
+    .setHeight(850)
+    .setTitle('Institutional Disposition Dashboard');
+  SpreadsheetApp.getUi().showModalDialog(html, 'Institutional Disposition Dashboard');
+}
+
+/**
+ * Opens the Disposition Center HTML interface
+ */
+function openDispositionCenter() {
+  const html = HtmlService.createHtmlOutputFromFile('disposition-center')
+    .setWidth(1050)
+    .setHeight(750)
+    .setTitle('Disposition Action Center');
+  SpreadsheetApp.getUi().showModalDialog(html, 'Disposition Action Center');
+}
+
+/**
+ * Opens the Portfolio Viewer HTML interface
+ */
+function openPortfolioViewer() {
+  const html = HtmlService.createHtmlOutputFromFile('portfolio-viewer')
+    .setWidth(1050)
+    .setHeight(700)
+    .setTitle('Portfolio Builder');
+  SpreadsheetApp.getUi().showModalDialog(html, 'Portfolio Builder');
+}
+
+/**
  * Opens the Help/SOP HTML interface
  */
 function openHelpSOP() {
@@ -206,15 +258,28 @@ function runFullPipeline() {
     generateSellerMessages();
 
     // Step 9: Buyer Match
-    ss.toast('Step 9/10: Matching buyers to deals...', 'Pipeline', 3);
+    ss.toast('Step 9/13: Matching buyers to deals...', 'Pipeline', 3);
     runBuyerMatching();
 
-    // Step 10: CRM Sync (if enabled)
-    ss.toast('Step 10/10: Syncing to CRM...', 'Pipeline', 3);
+    // Step 10: Institutional Scoring
+    ss.toast('Step 10/13: Running institutional screening...', 'Pipeline', 3);
+    calculateInstitutionalScores();
+
+    // Step 11: Institutional Buyer Matching & Packaging
+    ss.toast('Step 11/13: Matching institutional buyers...', 'Pipeline', 3);
+    generateBuyerMatches();
+    buildInstitutionalPackages();
+    updatePortfolioBuilder();
+    createDispositionTrackerEntries();
+
+    // Step 12: CRM Sync (if enabled)
+    ss.toast('Step 12/13: Syncing to CRM...', 'Pipeline', 3);
     syncToCRMIfEnabled();
 
-    // Refresh Dashboard
+    // Step 13: Refresh Dashboards
+    ss.toast('Step 13/13: Refreshing dashboards...', 'Pipeline', 3);
     refreshDashboard();
+    refreshInstitutionalDashboard();
 
     const duration = ((new Date() - startTime) / 1000).toFixed(1);
     logEvent('PIPELINE', `Full pipeline completed in ${duration}s`);
@@ -247,6 +312,62 @@ function runAnalyzeAndScore() {
   runAllStrategyEngines();
   runMultiExitComparison();
   logEvent('ANALYSIS', 'Analysis and scoring completed');
+}
+
+// ============================================================
+// INSTITUTIONAL DISPOSITION WORKFLOW
+// ============================================================
+
+/**
+ * Runs the complete institutional disposition workflow
+ * Can be run independently of the main pipeline
+ */
+function runInstitutionalDispositionWorkflow() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const startTime = new Date();
+
+  logEvent('INST', 'Starting institutional disposition workflow');
+  ss.toast('Starting institutional workflow...', 'Institutional Disposition', 5);
+
+  try {
+    // Step 1: Score all deals for institutional fitness
+    ss.toast('Step 1/7: Scoring institutional grades...', 'Institutional', 3);
+    calculateInstitutionalScores();
+
+    // Step 2: Update portfolio group suggestions based on market concentration
+    ss.toast('Step 2/7: Detecting market concentration...', 'Institutional', 3);
+    updatePortfolioGroupSuggestions();
+
+    // Step 3: Run buy box matching against institutional buyers
+    ss.toast('Step 3/7: Running buyer buy box matching...', 'Institutional', 3);
+    generateBuyerMatches();
+
+    // Step 4: Build investor-ready deal packages
+    ss.toast('Step 4/7: Building deal packages...', 'Institutional', 3);
+    buildInstitutionalPackages();
+
+    // Step 5: Build portfolio groups
+    ss.toast('Step 5/7: Building portfolio groups...', 'Institutional', 3);
+    updatePortfolioBuilder();
+
+    // Step 6: Create/update disposition tracker entries
+    ss.toast('Step 6/7: Creating disposition entries...', 'Institutional', 3);
+    createDispositionTrackerEntries();
+    updateBuyerRelationshipMetrics();
+
+    // Step 7: Refresh institutional dashboard
+    ss.toast('Step 7/7: Refreshing dashboard...', 'Institutional', 3);
+    refreshInstitutionalDashboard();
+
+    const duration = ((new Date() - startTime) / 1000).toFixed(1);
+    logEvent('INST', `Institutional workflow completed in ${duration}s`);
+    ss.toast(`Institutional workflow completed in ${duration}s!`, 'Success', 10);
+
+  } catch (error) {
+    logError('INST', 'Institutional workflow failed: ' + error.message, error.stack);
+    ss.toast('Institutional workflow failed: ' + error.message, 'Error', 10);
+    throw error;
+  }
 }
 
 // ============================================================
@@ -298,6 +419,9 @@ function nightlyRefresh() {
 
     // Update dashboard
     refreshDashboard();
+
+    // Run institutional disposition workflow
+    runInstitutionalDispositionWorkflow();
 
     // Archive old logs
     archiveOldLogs();
