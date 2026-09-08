@@ -82,6 +82,7 @@ function createCustomMenu() {
       .addItem('Initialize All Sheets', 'initializeAllSheets')
       .addItem('Apply Formatting', 'applyAllFormatting')
       .addItem('Run Health Check', 'runHealthCheckWithReport')
+      .addItem('Audit Master DB Columns', 'runQuantumDbColumnAudit')
       .addItem('Clear All Logs', 'clearAllLogs')
       .addItem('Export System Config', 'exportSystemConfig')
       .addItem('Reset to Defaults', 'resetToDefaults'))

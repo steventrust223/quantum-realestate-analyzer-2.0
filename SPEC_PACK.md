@@ -1,7 +1,15 @@
 # Quantum Real Estate Analyzer 2.0 — Spreadsheet Spec Pack
 
 > Extracted from the production codebase (`Config.gs`, `SheetManager.gs`, and 16 Apps Script modules).
-> This document is the single source of truth for the spreadsheet structure.
+> **`CONFIG.COLUMNS` in `src/Config.gs` is the source of truth for the spreadsheet structure.**
+> This document is a reading of that code and can drift from it; where the two disagree, the code wins.
+> Run *Quantum Analyzer → Settings & Admin → Audit Master DB Columns* to check the live sheet against `Config.gs`.
+>
+> **Corrected 2026-09-08.** Three section headings carried stale column counts — Master Database
+> said 60, Creative Finance Engine said 31, Repair Estimator said 24. The tables under those
+> headings were already correct and were verified position-by-position against `CONFIG.COLUMNS`
+> (69, 37 and 25 columns respectively, matching in order and spelling with zero differences).
+> Only the headings were wrong; no schema change was made.
 
 ---
 
@@ -81,7 +89,7 @@ Column annotations:
 
 ---
 
-### C1. Master Database (60 columns)
+### C1. Master Database (69 columns)
 
 **Identity & Source**
 
@@ -434,7 +442,7 @@ The **Buyer Matching Engine** (16 columns) also serves as a disposition/outreach
 | 20 | Flip Score | number (0-100) | C |
 | 21 | Flip Verdict | string | C |
 
-#### Creative Finance Engine (31 columns)
+#### Creative Finance Engine (37 columns)
 
 | # | Column Header | Type | M/C/S |
 |---|---|---|---|
@@ -520,7 +528,7 @@ The **Buyer Matching Engine** (16 columns) also serves as a disposition/outreach
 
 **Lead Scoring & Risk** (14 columns): `Deal ID`, `Address`, `Motivation Score`, `Equity Score`, `Market Score`, `Condition Score`, `Seller Response Score`, `Speed-to-Lead Score`, `SOM Impact`, `Total Lead Score`, `Risk Score`, `Combined Grade`, `Scoring Notes`, `Last Scored`
 
-**Repair Estimator** (24 columns): `Deal ID`, `Address`, `Year Built`, `Sqft`, `Property Type`, `Condition Notes`, `Roof`, `HVAC`, `Plumbing`, `Electrical`, `Foundation`, `Kitchen`, `Bathrooms`, `Flooring`, `Paint`, `Windows/Doors`, `Exterior`, `Landscaping`, `Other`, `Complexity Tier`, `Rehab Low`, `Rehab High`, `Rehab Mid`, `Risk Score`, `Notes`
+**Repair Estimator** (25 columns): `Deal ID`, `Address`, `Year Built`, `Sqft`, `Property Type`, `Condition Notes`, `Roof`, `HVAC`, `Plumbing`, `Electrical`, `Foundation`, `Kitchen`, `Bathrooms`, `Flooring`, `Paint`, `Windows/Doors`, `Exterior`, `Landscaping`, `Other`, `Complexity Tier`, `Rehab Low`, `Rehab High`, `Rehab Mid`, `Risk Score`, `Notes`
 
 **Post-Sale Tracker** (19 columns): `Deal ID`, `Address`, `Strategy Used`, `Projected Sale Price`, `Actual Sale Price`, `Price Variance`, `Projected Rent`, `Actual Rent`, `Rent Variance`, `Projected Timeline Days`, `Actual Timeline Days`, `Timeline Variance`, `Projected Profit`, `Actual Profit`, `Profit Variance`, `Close Date`, `Notes`, `Lessons Learned`, `Tune Recommendations`
 

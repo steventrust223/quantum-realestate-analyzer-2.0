@@ -289,47 +289,72 @@ function syncToCompanyHub() {
     return { synced: 0 };
   }
 
+  // Verify inputs before trusting the mapping. A drifted header row makes every
+  // name-based read resolve to undefined and syncs blank deals that look successful.
+  assertQuantumDbColumns('CompanyHub sync', masterSheet);
+
   const headers = masterSheet.getRange(1, 1, 1, masterSheet.getLastColumn()).getValues()[0];
-  const colMap = {};
-  headers.forEach((h, i) => colMap[h] = i + 1);
+  const cols = buildQuantumDbColMap_(headers);
 
   const data = masterSheet.getDataRange().getValues();
-  let syncedCount = 0;
-  let errorCount = 0;
 
+  // ---- Pass 1: build every payload before sending any. ----
+  // An unmapped Status Stage throws here, which aborts the whole sync with the
+  // offending deal named and nothing written. Building payloads inside the send
+  // loop would leave the first N deals already in the CRM when deal N+1 failed.
+  const pending = [];
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
-    const dealId = row[colMap['Deal ID'] - 1];
+    const dealId = cols.value(row, 'Deal ID');
     if (!dealId) continue;
 
     // Check if already synced
-    const crmSynced = row[colMap['CRM Synced'] - 1];
-    if (crmSynced === 'Yes') continue;
+    if (cols.value(row, 'CRM Synced') === 'Yes') continue;
 
     // Only sync actionable leads
-    const verdict = row[colMap['Verdict'] - 1];
-    if (verdict === 'PASS') continue;
+    if (cols.value(row, 'Verdict') === 'PASS') continue;
+
+    pending.push({
+      rowNumber: i + 1,
+      dealId: dealId,
+      payload: buildCompanyHubDealPayload(row, cols, dealId)
+    });
+  }
+
+  if (!pending.length) {
+    logEvent('CRM', 'CompanyHub sync completed: 0 deals to sync');
+    return { synced: 0, errors: 0 };
+  }
+
+  // ---- Pass 2: send. ----
+  const syncedColNumber = cols.num('CRM Synced');
+  const recordIdColNumber = cols.has('CRM Record ID') ? cols.num('CRM Record ID') : null;
+  let syncedCount = 0;
+  let errorCount = 0;
+
+  for (let p = 0; p < pending.length; p++) {
+    const deal = pending[p];
 
     try {
-      const dealData = buildCompanyHubDealPayload(row, headers, colMap);
-      const result = sendToCompanyHub(apiUrl, apiKey, dealData);
+      const result = sendToCompanyHub(apiUrl, apiKey, deal.payload);
 
       if (result.success) {
-        masterSheet.getRange(i + 1, colMap['CRM Synced']).setValue('Yes');
-        if (colMap['CRM Record ID']) {
-          masterSheet.getRange(i + 1, colMap['CRM Record ID']).setValue(result.recordId || '');
+        masterSheet.getRange(deal.rowNumber, syncedColNumber).setValue('Yes');
+        if (recordIdColNumber) {
+          masterSheet.getRange(deal.rowNumber, recordIdColNumber).setValue(result.recordId || '');
         }
         syncedCount++;
-        logSync('CompanyHub', 'CREATE', dealId, 'SUCCESS', result.recordId);
+        logSync('CompanyHub', 'CREATE', deal.dealId, 'SUCCESS', result.recordId);
       } else {
         errorCount++;
-        logSync('CompanyHub', 'CREATE', dealId, 'FAILED', result.message);
+        logSync('CompanyHub', 'CREATE', deal.dealId, 'FAILED', result.message);
       }
     } catch (error) {
       errorCount++;
-      logSync('CompanyHub', 'CREATE', dealId, 'FAILED', error.message);
+      logSync('CompanyHub', 'CREATE', deal.dealId, 'FAILED', error.message);
     }
 
+    // Rate limiting
     Utilities.sleep(200);
   }
 
@@ -337,46 +362,214 @@ function syncToCompanyHub() {
   return { synced: syncedCount, errors: errorCount };
 }
 
+// ============================================================
+// COMPANYHUB STAGE VOCABULARY (Blueprint v1.0)
+// ============================================================
+
 /**
- * Builds CompanyHub deal payload
+ * Blueprint stage names this repo is permitted to emit.
+ *
+ * INCOMPLETE BY DESIGN. The Unified Blueprint v1.0 defines 12 stages; only the
+ * eight below are named verbatim in a document available to this repo (CRM
+ * Integration Brief 2, section 4). The other four are NOT guessed here — an
+ * invented stage string is the exact defect this constant exists to prevent.
+ *
+ * Consequence: every stage the mapping below emits is in this list, so the
+ * assertion is sound today. If a future mapping needs one of the four
+ * unenumerated Blueprint stages, add it here with its exact Blueprint spelling
+ * confirmed against the Blueprint itself — not from memory, and not from any
+ * document written *about* the Blueprint.
  */
-function buildCompanyHubDealPayload(row, headers, colMap) {
-  return {
-    name: row[colMap['Address'] - 1] || 'Unknown Property',
-    type: 'Deal',
-    stage: mapVerdictToStage(row[colMap['Verdict'] - 1]),
-    value: row[colMap['Asking Price'] - 1] || 0,
-    properties: {
-      address: row[colMap['Address'] - 1],
-      city: row[colMap['City'] - 1],
-      state: row[colMap['State'] - 1],
-      zip: row[colMap['ZIP'] - 1],
-      askingPrice: row[colMap['Asking Price'] - 1],
-      arv: row[colMap['ARV'] - 1],
-      dealScore: row[colMap['Deal Score'] - 1],
-      riskScore: row[colMap['Risk Score'] - 1],
-      bestStrategy: row[colMap['Best Strategy'] - 1],
-      offerPrice: row[colMap['Offer Price Target'] - 1]
-    },
-    customFields: {
-      quantumDealId: row[colMap['Deal ID'] - 1],
-      verdict: row[colMap['Verdict'] - 1],
-      nextAction: row[colMap['Next Action'] - 1]
-    }
-  };
+var COMPANYHUB_STAGES = Object.freeze([
+  'New Lead',
+  'Contacted',
+  'Analyzed',
+  'Negotiating',
+  'Under Contract',
+  'Nurture',
+  'Closed',
+  'Dead'
+]);
+
+/**
+ * Master Database column 63 `Status Stage` -> Blueprint stage.
+ *
+ * `Status Stage` is the manual pipeline-position enum. Its ten permitted values
+ * are fixed by the data validation applied in applyMasterDBValidations()
+ * (SheetManager.gs); this map covers all ten, plus blank.
+ *
+ * Verdict is deliberately NOT an input here. Verdict is a score band, not a
+ * pipeline position: a HOT deal nobody has called is still a New Lead. Verdict
+ * travels on the Deal record in its own field (see customFields.verdict below)
+ * where it can drive tags, priority and automations without moving the deal.
+ *
+ * KNOWN LOSSY NARROWING: `Under Contract` and `Due Diligence` both collapse to
+ * Blueprint `Under Contract`, whose definition is "PSA signed, due diligence
+ * running". That is a deliberate Blueprint consolidation, not a bug. The
+ * distinction does not survive into the CRM. Do not work around it.
+ *
+ * FLAGGED FOR REVIEW: `Offer Sent` -> `Negotiating` is a judgment call. An offer
+ * that has been sent but not answered is arguably not yet a negotiation. It is
+ * mapped this way because Blueprint has no `Offer Sent` stage among the eight
+ * known names and `Contacted` would understate pipeline position. Revisit once
+ * the remaining four Blueprint stages are known.
+ */
+var STATUS_STAGE_TO_COMPANYHUB_STAGE = Object.freeze({
+  'New Lead': 'New Lead',
+  'Contacted': 'Contacted',
+  'Analyzing': 'Analyzed',
+  'Offer Sent': 'Negotiating',
+  'Negotiating': 'Negotiating',
+  'Under Contract': 'Under Contract',
+  'Due Diligence': 'Under Contract',
+  'Closed': 'Closed',
+  'Dead': 'Dead',
+  'On Hold': 'Nurture',
+  '': 'Analyzed'
+});
+
+/**
+ * Near-miss pairs: strings that differ from a real vocabulary member by a
+ * suffix, a tense, or a plural. These are the values most likely to be
+ * introduced by a well-meaning edit and least likely to be noticed in review,
+ * because they read correctly.
+ *
+ * Left side = the wrong string. Right side = what was meant, and where it lives.
+ */
+var COMPANYHUB_STAGE_NEAR_MISSES = Object.freeze({
+  'Analyzing': 'Analyzed (Blueprint stage). "Analyzing" is the Master DB `Status Stage` value, not a CRM stage.',
+  'Analyze': 'Analyzed',
+  'Negotiation': 'Negotiating',
+  'Negotiations': 'Negotiating',
+  'Nurturing': 'Nurture',
+  'New': 'New Lead. "New" is not a stage in any vocabulary in this system.',
+  'Contact': 'Contacted',
+  'Under contract': 'Under Contract (capital C)',
+  'Close': 'Closed',
+  'Closed Won': 'Closed',
+  'Dead Lead': 'Dead'
+});
+
+/**
+ * Asserts a stage string is a permitted Blueprint stage.
+ *
+ * This guards the OUTPUT of the mapping, not its input. Its purpose is that an
+ * edit to STATUS_STAGE_TO_COMPANYHUB_STAGE cannot reintroduce a non-Blueprint
+ * stage string without failing immediately and by name.
+ *
+ * @param {string} stage - Candidate Blueprint stage
+ * @param {string} context - What produced it, for the error message
+ * @throws {Error} If the stage is not in COMPANYHUB_STAGES
+ */
+function assertCompanyHubStage_(stage, context) {
+  if (COMPANYHUB_STAGES.indexOf(stage) >= 0) return;
+
+  const nearMiss = COMPANYHUB_STAGE_NEAR_MISSES[stage];
+  const hint = nearMiss
+    ? ` Did you mean: ${nearMiss}`
+    : ` Permitted stages: ${COMPANYHUB_STAGES.join(', ')}.`;
+
+  throw new Error(
+    `CompanyHub stage "${stage}" is not a Blueprint stage (${context}).${hint}`
+  );
 }
 
 /**
- * Maps verdict to CRM stage
+ * Maps Master DB `Status Stage` (column 63) to a Blueprint CompanyHub stage.
+ *
+ * Throws rather than defaulting. An unrecognised `Status Stage` means either the
+ * sheet's data validation was bypassed or the pipeline vocabulary changed
+ * without this map being updated; both are conditions a human must resolve.
+ * Defaulting would push the deal into the CRM at a stage nobody chose.
+ *
+ * @param {*} statusStage - Raw value of Master DB column 63
+ * @param {string} dealId - Deal ID, named in any error
+ * @returns {string} A Blueprint stage from COMPANYHUB_STAGES
+ * @throws {Error} If the value is not a recognised `Status Stage`
  */
-function mapVerdictToStage(verdict) {
-  const stageMap = {
-    'HOT': 'Qualified',
-    'SOLID': 'Interested',
-    'HOLD': 'Nurturing',
-    'PASS': 'Disqualified'
+function mapStatusStageToCompanyHubStage(statusStage, dealId) {
+  const raw = statusStage === null || statusStage === undefined ? '' : String(statusStage).trim();
+
+  if (!Object.prototype.hasOwnProperty.call(STATUS_STAGE_TO_COMPANYHUB_STAGE, raw)) {
+    const nearMiss = COMPANYHUB_STAGE_NEAR_MISSES[raw];
+    throw new Error(
+      `Deal ${dealId}: Master DB "Status Stage" value "${raw}" is not a recognised ` +
+      `pipeline stage.` +
+      (nearMiss ? ` Did you mean: ${nearMiss}` : '') +
+      ` Permitted values: ${Object.keys(STATUS_STAGE_TO_COMPANYHUB_STAGE)
+        .filter(k => k !== '').join(', ')} (or blank). Sync aborted; nothing written.`
+    );
+  }
+
+  const stage = STATUS_STAGE_TO_COMPANYHUB_STAGE[raw];
+  assertCompanyHubStage_(stage, `Status Stage "${raw}" on deal ${dealId}`);
+  return stage;
+}
+
+/**
+ * Coerces a sheet value to a bare number for CompanyHub.
+ *
+ * CompanyHub's Amount and Number field types accept digits and a decimal point
+ * only, max 9 digits, and its CSV import rejects the whole row on any other
+ * character — no currency symbol, no thousands separator, no percent sign. The
+ * REST client this repo uses sends JSON, which is not subject to the CSV parser,
+ * but a value that arrives as the string "$150,000" is wrong over either
+ * transport. Cells hold whatever was typed into them, so coerce at the boundary.
+ *
+ * Returns null for a value that is not a number, rather than 0 — a missing ARV
+ * and an ARV of zero are different facts.
+ *
+ * @param {*} value - Raw sheet value
+ * @returns {number|null} Bare number, or null if not numeric
+ */
+function toCompanyHubNumber_(value) {
+  if (typeof value === 'number') return isFinite(value) ? value : null;
+  if (value === null || value === undefined) return null;
+
+  // Strip currency symbols, thousands separators, percent signs and whitespace.
+  const cleaned = String(value).replace(/[$%,\s]/g, '');
+  if (cleaned === '') return null;
+
+  const parsed = Number(cleaned);
+  return isFinite(parsed) ? parsed : null;
+}
+
+/**
+ * Builds CompanyHub deal payload.
+ *
+ * Stage comes from `Status Stage`; verdict rides along as its own field.
+ * All monetary and numeric fields are emitted as bare numbers (or null).
+ *
+ * @param {Array} row - Master DB data row
+ * @param {Object} cols - Accessor from buildQuantumDbColMap_
+ * @param {string} dealId - Deal ID, for error messages
+ * @returns {Object} CompanyHub deal payload
+ */
+function buildCompanyHubDealPayload(row, cols, dealId) {
+  return {
+    name: cols.value(row, 'Address') || 'Unknown Property',
+    type: 'Deal',
+    stage: mapStatusStageToCompanyHubStage(cols.value(row, 'Status Stage'), dealId),
+    value: toCompanyHubNumber_(cols.value(row, 'Asking Price')),
+    properties: {
+      address: cols.value(row, 'Address'),
+      city: cols.value(row, 'City'),
+      state: cols.value(row, 'State'),
+      zip: cols.value(row, 'ZIP'),
+      askingPrice: toCompanyHubNumber_(cols.value(row, 'Asking Price')),
+      arv: toCompanyHubNumber_(cols.value(row, 'ARV')),
+      dealScore: toCompanyHubNumber_(cols.value(row, 'Deal Score')),
+      riskScore: toCompanyHubNumber_(cols.value(row, 'Risk Score')),
+      bestStrategy: cols.value(row, 'Best Strategy'),
+      offerPrice: toCompanyHubNumber_(cols.value(row, 'Offer Price Target'))
+    },
+    customFields: {
+      quantumDealId: dealId,
+      verdict: cols.value(row, 'Verdict'),
+      statusStage: cols.value(row, 'Status Stage'),
+      nextAction: cols.value(row, 'Next Action')
+    }
   };
-  return stageMap[verdict] || 'New';
 }
 
 /**
